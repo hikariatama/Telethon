@@ -141,6 +141,7 @@ GAME_BOT_INVALID,400,You cannot send that game with the current bot
 GIF_ID_INVALID,400,The provided GIF ID is invalid
 GRAPH_OUTDATED_RELOAD,400,"Data can't be used for the channel statistics, graphs outdated"
 GROUPCALL_FORBIDDEN,403,
+GROUPCALL_JOIN_MISSING,400,
 GROUPCALL_SSRC_DUPLICATE_MUCH,400,
 GROUPED_MEDIA_INVALID,400,Invalid grouped media
 GROUP_CALL_INVALID,400,Group call invalid
@@ -175,6 +176,7 @@ MAX_QTS_INVALID,400,The provided QTS were invalid
 MD5_CHECKSUM_INVALID,400,The MD5 check-sums do not match
 MEDIA_CAPTION_TOO_LONG,400,The caption is too long
 MEDIA_EMPTY,400,The provided media object is invalid or the current account may not be able to send it (such as games as users)
+MEDIA_GROUPED_INVALID,400,
 MEDIA_INVALID,400,Media invalid
 MEDIA_NEW_INVALID,400,The new media to edit the message with is invalid (such as stickers or voice notes)
 MEDIA_PREV_INVALID,400,The old media cannot be edited with anything else (such as stickers or voice notes)
@@ -314,6 +316,10 @@ STICKER_ID_INVALID,400,The provided sticker ID is invalid
 STICKER_INVALID,400,The provided sticker is invalid
 STICKER_PNG_DIMENSIONS,400,Sticker png dimensions invalid
 STICKER_PNG_NOPNG,400,Stickers must be a png file but the used image was not a png
+STICKER_TGS_NODOC,400,
+STICKER_TGS_NOTGS,400,Stickers must be a tgs file but the used file was not a tgs
+STICKER_THUMB_PNG_NOPNG,400,Stickerset thumb must be a png file but the used file was not png
+STICKER_THUMB_TGS_NOTGS,400,Stickerset thumb must be a tgs file but the used file was not tgs
 STORAGE_CHECK_FAILED,500,Server storage check failed
 STORE_INVALID_SCALAR_TYPE,500,
 TAKEOUT_INIT_DELAY_X,420,A wait of {seconds} seconds is required before being able to initiate the takeout
@@ -324,8 +330,10 @@ TIMEOUT,500,A timeout occurred while fetching data from the worker
 THEME_INVALID,400,Theme invalid
 THEME_MIME_INVALID,400,"You cannot create this theme, the mime-type is invalid"
 TMP_PASSWORD_DISABLED,400,The temporary password is disabled
+TMP_PASSWORD_INVALID,400,Password auth needs to be regenerated
 TOKEN_INVALID,400,The provided token is invalid
 TTL_DAYS_INVALID,400,The provided TTL is invalid
+TTL_PERIOD_INVALID,400,The provided TTL Period is invalid
 TYPES_EMPTY,400,The types field is empty
 TYPE_CONSTRUCTOR_INVALID,400,The type constructor is invalid
 UNKNOWN_METHOD,500,The method you tried to call cannot be called on non-CDN DCs
@@ -358,10 +366,12 @@ USER_NOT_MUTUAL_CONTACT,400 403,The provided user is not a mutual contact
 USER_NOT_PARTICIPANT,400,The target user is not a member of the specified megagroup or channel
 USER_PRIVACY_RESTRICTED,403,The user's privacy settings do not allow you to do this
 USER_RESTRICTED,403,"You're spamreported, you can't create channels or chats."
+USERPIC_UPLOAD_REQUIRED,400,You must have a profile picture before using this method
 VIDEO_CONTENT_TYPE_INVALID,400,The video content type is not supported with the given parameters (i.e. supports_streaming)
 VIDEO_FILE_INVALID,400,The given video cannot be used
 WALLPAPER_FILE_INVALID,400,The given file cannot be used as a wallpaper
 WALLPAPER_INVALID,400,The input wallpaper was not valid
+WALLPAPER_MIME_INVALID,400,
 WC_CONVERT_URL_INVALID,400,WC convert URL invalid
 WEBDOCUMENT_URL_INVALID,400,The given URL cannot be used
 WEBPAGE_CURL_FAILED,400,Failure while fetching the webpage with cURL
