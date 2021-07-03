@@ -255,6 +255,12 @@ class InlineBuilder:
                 contact, file, geo, gif, photo, sticker, venue, video, voice.
                 It will be automatically set if ``mime_type`` is specified,
                 and default to ``'file'`` if no matching mime type is found.
+                you may need to pass ``attributes`` in order to use ``type``
+                effectively.
+
+            attributes (`list`, optional):
+                Optional attributes that override the inferred ones, like
+                :tl:`DocumentAttributeFilename` and so on.
 
             include_media (`bool`, optional):
                 Whether the document file used to display the result should be
@@ -303,7 +309,7 @@ class InlineBuilder:
                 file,
                 mime_type=mime_type,
                 attributes=attributes,
-                force_document=True,
+                force_document=force_document,
                 voice_note=voice_note,
                 video_note=video_note,
                 allow_cache=use_cache
