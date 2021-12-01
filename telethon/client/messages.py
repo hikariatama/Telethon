@@ -19,7 +19,8 @@ class _MessagesIter(RequestIter):
     """
     async def _init(
             self, entity, offset_id, min_id, max_id,
-            from_user, offset_date, add_offset, filter, search, reply_to
+            from_user, offset_date, add_offset, filter, search, reply_to,
+            scheduled
     ):
         # Note that entity being `None` will perform a global search.
         if entity:
@@ -83,6 +84,11 @@ class _MessagesIter(RequestIter):
                 offset_peer=types.InputPeerEmpty(),
                 offset_id=offset_id,
                 limit=1
+            )
+        elif scheduled:
+            self.request = functions.messages.GetScheduledHistoryRequest(
+                peer=entity,
+                hash=0
             )
         elif reply_to is not None:
             self.request = functions.messages.GetRepliesRequest(
@@ -336,7 +342,8 @@ class MessageMethods:
             wait_time: float = None,
             ids: 'typing.Union[int, typing.Sequence[int]]' = None,
             reverse: bool = False,
-            reply_to: int = None
+            reply_to: int = None,
+            scheduled: bool = False
     ) -> 'typing.Union[_MessagesIter, _IDsIter]':
         """
         Iterator over the messages for the given chat.
@@ -463,6 +470,10 @@ class MessageMethods:
                     a message and replies to it itself, that reply will not
                     be included in the results.
 
+            scheduled (`bool`, optional):
+                If set to `True`, messages which are scheduled will be returned.
+                All other parameter will be ignored for this, except `entity`.
+
         Yields
             Instances of `Message <telethon.tl.custom.message.Message>`.
 
@@ -521,7 +532,8 @@ class MessageMethods:
             add_offset=add_offset,
             filter=filter,
             search=search,
-            reply_to=reply_to
+            reply_to=reply_to,
+            scheduled=scheduled
         )
 
     async def get_messages(self: 'TelegramClient', *args, **kwargs) -> 'hints.TotalList':
@@ -608,6 +620,7 @@ class MessageMethods:
             clear_draft: bool = False,
             buttons: 'hints.MarkupLike' = None,
             silent: bool = None,
+            background: bool = None,
             supports_streaming: bool = False,
             schedule: 'hints.DateLike' = None,
             comment_to: 'typing.Union[int, types.Message]' = None
@@ -701,6 +714,9 @@ class MessageMethods:
                 channel or not. Defaults to `False`, which means it will
                 notify them. Set it to `True` to alter this behaviour.
 
+            background (`bool`, optional):
+                Whether the message should be send in background.
+
             supports_streaming (`bool`, optional):
                 Whether the sent video supports streaming or not. Note that
                 Telegram only recognizes as streamable some formats like MP4,
@@ -788,7 +804,7 @@ class MessageMethods:
                 buttons=buttons, clear_draft=clear_draft, silent=silent,
                 schedule=schedule, supports_streaming=supports_streaming,
                 formatting_entities=formatting_entities,
-                comment_to=comment_to
+                comment_to=comment_to, background=background
             )
 
         entity = await self.get_input_entity(entity)
@@ -811,6 +827,7 @@ class MessageMethods:
                     message.media,
                     caption=message.message,
                     silent=silent,
+                    background=background,
                     reply_to=reply_to,
                     buttons=markup,
                     formatting_entities=message.entities,
@@ -821,6 +838,7 @@ class MessageMethods:
                 peer=entity,
                 message=message.message or '',
                 silent=silent,
+                background=background,
                 reply_to_msg_id=utils.get_message_id(reply_to),
                 reply_markup=markup,
                 entities=message.entities,
@@ -846,6 +864,7 @@ class MessageMethods:
                 reply_to_msg_id=utils.get_message_id(reply_to),
                 clear_draft=clear_draft,
                 silent=silent,
+                background=background,
                 reply_markup=self.build_reply_markup(buttons),
                 schedule_date=schedule
             )
@@ -874,6 +893,8 @@ class MessageMethods:
             messages: 'typing.Union[hints.MessageIDLike, typing.Sequence[hints.MessageIDLike]]',
             from_peer: 'hints.EntityLike' = None,
             *,
+            background: bool = None,
+            with_my_score: bool = None,
             silent: bool = None,
             as_album: bool = None,
             schedule: 'hints.DateLike' = None
@@ -905,6 +926,12 @@ class MessageMethods:
                 Defaults to `False` (send with a notification sound unless
                 the person has the chat muted). Set it to `True` to alter
                 this behaviour.
+
+            background (`bool`, optional):
+                Whether the message should be forwarded in background.
+
+            with_my_score (`bool`, optional):
+                Whether forwarded should contain your game score.
 
             as_album (`bool`, optional):
                 This flag no longer has any effect.
@@ -980,6 +1007,8 @@ class MessageMethods:
                 id=chunk,
                 to_peer=entity,
                 silent=silent,
+                background=background,
+                with_my_score=with_my_score,
                 schedule_date=schedule
             )
             result = await self(req)
@@ -1343,7 +1372,7 @@ class MessageMethods:
 
             notify (`bool`, optional):
                 Whether the pin should notify people or not.
-                
+
             pm_oneside (`bool`, optional):
                 Whether the message should be pinned for everyone or not.
                 By default it has the opposite behaviour of official clients,
@@ -1404,12 +1433,11 @@ class MessageMethods:
         )
         result = await self(request)
 
-        # Unpinning does not produce a service message
-        if unpin:
-            return
-
-        # Pinning in User chats (just with yourself really) does not produce a service message
-        if helpers._entity_type(entity) == helpers._EntityType.USER:
+        # Unpinning does not produce a service message.
+        # Pinning a message that was already pinned also produces no service message.
+        # Pinning a message in your own chat does not produce a service message,
+        # but pinning on a private conversation with someone else does.
+        if unpin or not result.updates:
             return
 
         # Pinning a message that doesn't exist would RPC-error earlier

@@ -16,6 +16,8 @@ if typing.TYPE_CHECKING:
     from .telegramclient import TelegramClient
 
 
+Callback = typing.Callable[[typing.Any], typing.Any]
+
 class UpdateMethods:
 
     # region Public methods
@@ -29,6 +31,17 @@ class UpdateMethods:
             pass
         finally:
             await self.disconnect()
+
+    async def set_receive_updates(self: 'TelegramClient', receive_updates):
+        """
+        Change the value of `receive_updates`.
+
+        This is an `async` method, because in order for Telegram to start
+        sending updates again, a request must be made.
+        """
+        self._no_updates = not receive_updates
+        if receive_updates:
+            await self(functions.updates.GetStateRequest())
 
     def run_until_disconnected(self: 'TelegramClient'):
         """
@@ -104,7 +117,7 @@ class UpdateMethods:
 
     def add_event_handler(
             self: 'TelegramClient',
-            callback: callable,
+            callback: Callback,
             event: EventBuilder = None):
         """
         Registers a new event handler callback.
@@ -153,7 +166,7 @@ class UpdateMethods:
 
     def remove_event_handler(
             self: 'TelegramClient',
-            callback: callable,
+            callback: Callback,
             event: EventBuilder = None) -> int:
         """
         Inverse operation of `add_event_handler()`.
@@ -191,7 +204,7 @@ class UpdateMethods:
         return found
 
     def list_event_handlers(self: 'TelegramClient')\
-            -> 'typing.Sequence[typing.Tuple[callable, EventBuilder]]':
+            -> 'typing.Sequence[typing.Tuple[Callback, EventBuilder]]':
         """
         Lists all registered event handlers.
 

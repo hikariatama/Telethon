@@ -22,6 +22,7 @@ class _ChatAction:
         'contact': types.SendMessageChooseContactAction(),
         'game': types.SendMessageGamePlayAction(),
         'location': types.SendMessageGeoLocationAction(),
+        'sticker': types.SendMessageChooseStickerAction(),
 
         'record-audio': types.SendMessageRecordAudioAction(),
         'record-voice': types.SendMessageRecordAudioAction(),  # alias
@@ -233,6 +234,9 @@ class _ParticipantsIter(RequestIter):
             for participant in participants.participants:
 
                 if isinstance(participant, types.ChannelParticipantBanned):
+                    if not isinstance(participant.peer, types.PeerUser):
+                        # May have the entire channel banned. See #3105.
+                        continue
                     user_id = participant.peer.user_id
                 else:
                     user_id = participant.user_id
@@ -770,6 +774,7 @@ class ChatMethods:
                 * ``'contact'``: choosing a contact.
                 * ``'game'``: playing a game.
                 * ``'location'``: choosing a geo location.
+                * ``'sticker'``: choosing a sticker.
                 * ``'record-audio'``: recording a voice note.
                   You may use ``'record-voice'`` as alias.
                 * ``'record-round'``: recording a round video.

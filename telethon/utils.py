@@ -429,7 +429,8 @@ def get_input_geo(geo):
 def get_input_media(
         media, *,
         is_photo=False, attributes=None, force_document=False,
-        voice_note=False, video_note=False, supports_streaming=False
+        voice_note=False, video_note=False, supports_streaming=False,
+        ttl=None
 ):
     """
     Similar to :meth:`get_input_peer`, but for media.
@@ -442,37 +443,39 @@ def get_input_media(
         if media.SUBCLASS_OF_ID == 0xfaf846f4:  # crc32(b'InputMedia')
             return media
         elif media.SUBCLASS_OF_ID == 0x846363e0:  # crc32(b'InputPhoto')
-            return types.InputMediaPhoto(media)
+            return types.InputMediaPhoto(media, ttl_seconds=ttl)
         elif media.SUBCLASS_OF_ID == 0xf33fdb68:  # crc32(b'InputDocument')
-            return types.InputMediaDocument(media)
+            return types.InputMediaDocument(media, ttl_seconds=ttl)
     except AttributeError:
         _raise_cast_fail(media, 'InputMedia')
 
     if isinstance(media, types.MessageMediaPhoto):
         return types.InputMediaPhoto(
             id=get_input_photo(media.photo),
-            ttl_seconds=media.ttl_seconds
+            ttl_seconds=ttl or media.ttl_seconds
         )
 
     if isinstance(media, (types.Photo, types.photos.Photo, types.PhotoEmpty)):
         return types.InputMediaPhoto(
-            id=get_input_photo(media)
+            id=get_input_photo(media),
+            ttl_seconds=ttl
         )
 
     if isinstance(media, types.MessageMediaDocument):
         return types.InputMediaDocument(
             id=get_input_document(media.document),
-            ttl_seconds=media.ttl_seconds
+            ttl_seconds=ttl or media.ttl_seconds
         )
 
     if isinstance(media, (types.Document, types.DocumentEmpty)):
         return types.InputMediaDocument(
-            id=get_input_document(media)
+            id=get_input_document(media),
+            ttl_seconds=ttl
         )
 
     if isinstance(media, (types.InputFile, types.InputFileBig)):
         if is_photo:
-            return types.InputMediaUploadedPhoto(file=media)
+            return types.InputMediaUploadedPhoto(file=media, ttl_seconds=ttl)
         else:
             attrs, mime = get_attributes(
                 media,
@@ -483,7 +486,8 @@ def get_input_media(
                 supports_streaming=supports_streaming
             )
             return types.InputMediaUploadedDocument(
-                file=media, mime_type=mime, attributes=attrs, force_file=force_document)
+                file=media, mime_type=mime, attributes=attrs, force_file=force_document,
+                ttl_seconds=ttl)
 
     if isinstance(media, types.MessageMediaGame):
         return types.InputMediaGame(id=types.InputGameID(
@@ -522,7 +526,7 @@ def get_input_media(
         return types.InputMediaEmpty()
 
     if isinstance(media, types.Message):
-        return get_input_media(media.media, is_photo=is_photo)
+        return get_input_media(media.media, is_photo=is_photo, ttl=ttl)
 
     if isinstance(media, types.MessageMediaPoll):
         if media.poll.quiz:
@@ -1025,13 +1029,13 @@ def get_peer_id(peer, add_mark=True):
         return peer.user_id
     elif isinstance(peer, types.PeerChat):
         # Check in case the user mixed things up to avoid blowing up
-        if not (0 < peer.chat_id <= 0x7fffffff):
+        if not (0 < peer.chat_id <= 9999999999):
             peer.chat_id = resolve_id(peer.chat_id)[0]
 
         return -peer.chat_id if add_mark else peer.chat_id
     else:  # if isinstance(peer, types.PeerChannel):
         # Check in case the user mixed things up to avoid blowing up
-        if not (0 < peer.channel_id <= 0x7fffffff):
+        if not (0 < peer.channel_id <= 9999999999):
             peer.channel_id = resolve_id(peer.channel_id)[0]
 
         if not add_mark:

@@ -112,9 +112,11 @@ class UploadMethods:
             video_note: bool = False,
             buttons: 'hints.MarkupLike' = None,
             silent: bool = None,
+            background: bool = None,
             supports_streaming: bool = False,
             schedule: 'hints.DateLike' = None,
             comment_to: 'typing.Union[int, types.Message]' = None,
+            ttl: int = None,
             **kwargs) -> 'types.Message':
         """
         Sends message with the given file to the specified entity.
@@ -249,6 +251,9 @@ class UploadMethods:
                 the person has the chat muted). Set it to `True` to alter
                 this behaviour.
 
+            background (`bool`, optional):
+                Whether the message should be send in background.
+
             supports_streaming (`bool`, optional):
                 Whether the sent video supports streaming or not. Note that
                 Telegram only recognizes as streamable some formats like MP4,
@@ -268,6 +273,18 @@ class UploadMethods:
 
                 This parameter takes precedence over ``reply_to``. If there is
                 no linked chat, `telethon.errors.sgIdInvalidError` is raised.
+
+            ttl (`int`. optional):
+                The Time-To-Live of the file (also known as "self-destruct timer"
+                or "self-destructing media"). If set, files can only be viewed for
+                a short period of time before they disappear from the message
+                history automatically.
+
+                The value must be at least 1 second, and at most 60 seconds,
+                otherwise Telegram will ignore this parameter.
+
+                Not all types of media can be used with this parameter, such
+                as text documents, which will fail with ``TtlMediaInvalidError``.
 
         Returns
             The `Message <telethon.tl.custom.message.Message>` (or messages)
@@ -347,7 +364,7 @@ class UploadMethods:
                     progress_callback=progress_callback, reply_to=reply_to,
                     parse_mode=parse_mode, silent=silent, schedule=schedule,
                     supports_streaming=supports_streaming, clear_draft=clear_draft,
-                    force_document=force_document
+                    force_document=force_document, background=background,
                 )
                 file = file[10:]
                 captions = captions[10:]
@@ -360,7 +377,7 @@ class UploadMethods:
                     attributes=attributes, thumb=thumb, voice_note=voice_note,
                     video_note=video_note, buttons=buttons, silent=silent,
                     supports_streaming=supports_streaming, schedule=schedule,
-                    clear_draft=clear_draft,
+                    clear_draft=clear_draft, background=background,
                     **kwargs
                 ))
 
@@ -378,7 +395,7 @@ class UploadMethods:
             progress_callback=progress_callback,
             attributes=attributes,  allow_cache=allow_cache, thumb=thumb,
             voice_note=voice_note, video_note=video_note,
-            supports_streaming=supports_streaming
+            supports_streaming=supports_streaming, ttl=ttl
         )
 
         # e.g. invalid cast from :tl:`MessageMediaWebPage`
@@ -389,7 +406,8 @@ class UploadMethods:
         request = functions.messages.SendMediaRequest(
             entity, media, reply_to_msg_id=reply_to, message=caption,
             entities=msg_entities, reply_markup=markup, silent=silent,
-            schedule_date=schedule, clear_draft=clear_draft
+            schedule_date=schedule, clear_draft=clear_draft,
+            background=background
         )
         return self._get_response_message(request, await self(request), entity)
 
@@ -397,7 +415,7 @@ class UploadMethods:
                           progress_callback=None, reply_to=None,
                           parse_mode=(), silent=None, schedule=None,
                           supports_streaming=None, clear_draft=None,
-                          force_document=False):
+                          force_document=False, background=None, ttl=None):
         """Specialized version of .send_file for albums"""
         # We don't care if the user wants to avoid cache, we will use it
         # anyway. Why? The cached version will be exactly the same thing
@@ -427,7 +445,7 @@ class UploadMethods:
             # it as media and then convert that to :tl:`InputMediaPhoto`.
             fh, fm, _ = await self._file_to_media(
                 file, supports_streaming=supports_streaming,
-                force_document=force_document)
+                force_document=force_document, ttl=ttl)
             if isinstance(fm, (types.InputMediaUploadedPhoto, types.InputMediaPhotoExternal)):
                 r = await self(functions.messages.UploadMediaRequest(
                     entity, media=fm
@@ -456,7 +474,8 @@ class UploadMethods:
         # Now we can construct the multi-media request
         request = functions.messages.SendMultiMediaRequest(
             entity, reply_to_msg_id=reply_to, multi_media=media,
-            silent=silent, schedule_date=schedule, clear_draft=clear_draft
+            silent=silent, schedule_date=schedule, clear_draft=clear_draft,
+            background=background
         )
         result = await self(request)
 
@@ -648,7 +667,8 @@ class UploadMethods:
             self, file, force_document=False, file_size=None,
             progress_callback=None, attributes=None, thumb=None,
             allow_cache=True, voice_note=False, video_note=False,
-            supports_streaming=False, mime_type=None, as_image=None):
+            supports_streaming=False, mime_type=None, as_image=None,
+            ttl=None):
         if not file:
             return None, None, None
 
@@ -677,7 +697,8 @@ class UploadMethods:
                     force_document=force_document,
                     voice_note=voice_note,
                     video_note=video_note,
-                    supports_streaming=supports_streaming
+                    supports_streaming=supports_streaming,
+                    ttl=ttl
                 ), as_image)
             except TypeError:
                 # Can't turn whatever was given into media
@@ -696,13 +717,13 @@ class UploadMethods:
             )
         elif re.match('https?://', file):
             if as_image:
-                media = types.InputMediaPhotoExternal(file)
+                media = types.InputMediaPhotoExternal(file, ttl_seconds=ttl)
             else:
-                media = types.InputMediaDocumentExternal(file)
+                media = types.InputMediaDocumentExternal(file, ttl_seconds=ttl)
         else:
             bot_file = utils.resolve_bot_file_id(file)
             if bot_file:
-                media = utils.get_input_media(bot_file)
+                media = utils.get_input_media(bot_file, ttl=ttl)
 
         if media:
             pass  # Already have media, don't check the rest
@@ -712,7 +733,7 @@ class UploadMethods:
                 'an HTTP URL or a valid bot-API-like file ID'.format(file)
             )
         elif as_image:
-            media = types.InputMediaUploadedPhoto(file_handle)
+            media = types.InputMediaUploadedPhoto(file_handle, ttl_seconds=ttl)
         else:
             attributes, mime_type = utils.get_attributes(
                 file,
@@ -737,7 +758,8 @@ class UploadMethods:
                 mime_type=mime_type,
                 attributes=attributes,
                 thumb=thumb,
-                force_file=force_document and not is_image
+                force_file=force_document and not is_image,
+                ttl_seconds=ttl
             )
         return file_handle, media, as_image
 
