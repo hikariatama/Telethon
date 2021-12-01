@@ -397,27 +397,25 @@ class UpdateMethods:
         self._dispatching_updates_queue.clear()
 
     async def _dispatch_update(self: 'TelegramClient', update, others, channel_id, pts_date):
-        if not self._entity_cache.ensure_cached(update):
-            # We could add a lock to not fetch the same pts twice if we are
-            # already fetching it. However this does not happen in practice,
-            # which makes sense, because different updates have different pts.
-            if self._state_cache.update(update, check_only=True):
-                # If the update doesn't have pts, fetching won't do anything.
-                # For example, UpdateUserStatus or UpdateChatUserTyping.
-                try:
-                    await self._get_difference(update, channel_id, pts_date)
-                except OSError:
-                    pass  # We were disconnected, that's okay
-                except errors.RPCError:
-                    # There's a high chance the request fails because we lack
-                    # the channel. Because these "happen sporadically" (#1428)
-                    # we should be okay (no flood waits) even if more occur.
-                    pass
-                except ValueError:
-                    # There is a chance that GetFullChannelRequest and GetDifferenceRequest
-                    # inside the _get_difference() function will end up with
-                    # ValueError("Request was unsuccessful N time(s)") for whatever reasons.
-                    pass
+        if not self._entity_cache.ensure_cached(
+            update
+        ) and self._state_cache.update(update, check_only=True):
+            # If the update doesn't have pts, fetching won't do anything.
+            # For example, UpdateUserStatus or UpdateChatUserTyping.
+            try:
+                await self._get_difference(update, channel_id, pts_date)
+            except OSError:
+                pass  # We were disconnected, that's okay
+            except errors.RPCError:
+                # There's a high chance the request fails because we lack
+                # the channel. Because these "happen sporadically" (#1428)
+                # we should be okay (no flood waits) even if more occur.
+                pass
+            except ValueError:
+                # There is a chance that GetFullChannelRequest and GetDifferenceRequest
+                # inside the _get_difference() function will end up with
+                # ValueError("Request was unsuccessful N time(s)") for whatever reasons.
+                pass
 
         if not self._self_input_peer:
             # Some updates require our own ID, so we must make sure
@@ -595,37 +593,6 @@ class UpdateMethods:
                                         'after reconnect: %s: %s', type(e), e)
 
         return
-        try:
-            self._log[__name__].info(
-                'Asking for the current state after reconnect...')
-
-            # TODO consider:
-            # If there aren't many updates while the client is disconnected
-            # (I tried with up to 20), Telegram seems to send them without
-            # asking for them (via updates.getDifference).
-            #
-            # On disconnection, the library should probably set a "need
-            # difference" or "catching up" flag so that any new updates are
-            # ignored, and then the library should call updates.getDifference
-            # itself to fetch them.
-            #
-            # In any case (either there are too many updates and Telegram
-            # didn't send them, or there isn't a lot and Telegram sent them
-            # but we dropped them), we fetch the new difference to get all
-            # missed updates. I feel like this would be the best solution.
-
-            # If a disconnection occurs, the old known state will be
-            # the latest one we were aware of, so we can catch up since
-            # the most recent state we were aware of.
-            await self.catch_up()
-
-            self._log[__name__].info('Successfully fetched missed updates')
-        except errors.RPCError as e:
-            self._log[__name__].warning('Failed to get missed updates after '
-                                        'reconnect: %r', e)
-        except Exception:
-            self._log[__name__].exception(
-                'Unhandled exception while getting update difference after reconnect')
 
     # endregion
 

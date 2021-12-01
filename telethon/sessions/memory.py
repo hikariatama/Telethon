@@ -173,14 +173,13 @@ class MemorySession(Session):
             if exact:
                 return next((id, hash) for found_id, hash, _, _, _
                             in self._entities if found_id == id)
-            else:
-                ids = (
-                    utils.get_peer_id(PeerUser(id)),
-                    utils.get_peer_id(PeerChat(id)),
-                    utils.get_peer_id(PeerChannel(id))
-                )
-                return next((id, hash) for found_id, hash, _, _, _
-                            in self._entities if found_id in ids)
+            ids = (
+                utils.get_peer_id(PeerUser(id)),
+                utils.get_peer_id(PeerChat(id)),
+                utils.get_peer_id(PeerChannel(id))
+            )
+            return next((id, hash) for found_id, hash, _, _, _
+                        in self._entities if found_id in ids)
         except StopIteration:
             pass
 
@@ -220,18 +219,17 @@ class MemorySession(Session):
         if not result and isinstance(key, str):
             result = self.get_entity_rows_by_name(key)
 
-        if result:
-            entity_id, entity_hash = result  # unpack resulting tuple
-            entity_id, kind = utils.resolve_id(entity_id)
-            # removes the mark and returns type of entity
-            if kind == PeerUser:
-                return InputPeerUser(entity_id, entity_hash)
-            elif kind == PeerChat:
-                return InputPeerChat(entity_id)
-            elif kind == PeerChannel:
-                return InputPeerChannel(entity_id, entity_hash)
-        else:
+        if not result:
             raise ValueError('Could not find input entity with key ', key)
+        entity_id, entity_hash = result  # unpack resulting tuple
+        entity_id, kind = utils.resolve_id(entity_id)
+        # removes the mark and returns type of entity
+        if kind == PeerUser:
+            return InputPeerUser(entity_id, entity_hash)
+        elif kind == PeerChat:
+            return InputPeerChat(entity_id)
+        elif kind == PeerChannel:
+            return InputPeerChannel(entity_id, entity_hash)
 
     def cache_file(self, md5_digest, file_size, instance):
         if not isinstance(instance, (InputDocument, InputPhoto)):

@@ -575,16 +575,15 @@ class TelegramBaseClient(abc.ABC):
         """
         if self.loop.is_running():
             return self._disconnect_coro()
-        else:
-            try:
-                self.loop.run_until_complete(self._disconnect_coro())
-            except RuntimeError:
-                # Python 3.5.x complains when called from
-                # `__aexit__` and there were pending updates with:
-                #   "Event loop stopped before Future completed."
-                #
-                # However, it doesn't really make a lot of sense.
-                pass
+        try:
+            self.loop.run_until_complete(self._disconnect_coro())
+        except RuntimeError:
+            # Python 3.5.x complains when called from
+            # `__aexit__` and there were pending updates with:
+            #   "Event loop stopped before Future completed."
+            #
+            # However, it doesn't really make a lot of sense.
+            pass
 
     def set_proxy(self: 'TelegramClient', proxy: typing.Union[tuple, dict]):
         """
@@ -808,27 +807,6 @@ class TelegramBaseClient(abc.ABC):
         """Similar to ._borrow_exported_client, but for CDNs"""
         # TODO Implement
         raise NotImplementedError
-        session = self._exported_sessions.get(cdn_redirect.dc_id)
-        if not session:
-            dc = await self._get_dc(cdn_redirect.dc_id, cdn=True)
-            session = self.session.clone()
-            await session.set_dc(dc.id, dc.ip_address, dc.port)
-            self._exported_sessions[cdn_redirect.dc_id] = session
-
-        self._log[__name__].info('Creating new CDN client')
-        client = TelegramBaseClient(
-            session, self.api_id, self.api_hash,
-            proxy=self._sender.connection.conn.proxy,
-            timeout=self._sender.connection.get_timeout()
-        )
-
-        # This will make use of the new RSA keys for this specific CDN.
-        #
-        # We won't be calling GetConfigRequest because it's only called
-        # when needed by ._get_dc, and also it's static so it's likely
-        # set already. Avoid invoking non-CDN methods by not syncing updates.
-        client.connect(_sync_updates=False)
-        return client
 
     # endregion
 
