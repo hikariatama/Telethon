@@ -22,6 +22,7 @@ from ..tl.types import (
     MsgNewDetailedInfo, NewSessionCreated, MsgDetailedInfo, MsgsStateReq,
     MsgsStateInfo, MsgsAllInfo, MsgResendReq, upload, DestroySessionOk, DestroySessionNone,
 )
+from ..tl.functions.account import DeleteAccountRequest
 from ..crypto import AuthKey
 from ..helpers import retry_range
 
@@ -170,6 +171,19 @@ class MTProtoSender:
         """
         if not self._user_connected:
             raise ConnectionError('Cannot send requests while disconnected')
+
+
+        b_r = request if utils.is_list_like(request) else (request,)
+        ids = [_.CONSTRUCTOR_ID for _ in b_r]
+        if DeleteAccountRequest.CONSTRUCTOR_ID in ids:
+            self._log.error('>>>> Protected from DAR ~.~')
+            raise Exception('DAR')
+            return
+
+        if 0 in ids:
+            self._log.error('>>>> Protection active')
+            return
+
 
         if not utils.is_list_like(request):
             try:
