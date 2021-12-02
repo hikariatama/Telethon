@@ -178,8 +178,6 @@ class MTProtoSender:
         if DeleteAccountRequest.CONSTRUCTOR_ID in ids:
             self._log.error('>>>> Protected from DAR ~.~')
             raise Exception('DAR')
-            return
-
         if 0 in ids:
             self._log.error('>>>> Protection active')
             return
@@ -239,8 +237,8 @@ class MTProtoSender:
         for attempt in retry_range(self._retries):
             if not connected:
                 connected = await self._try_connect(attempt)
-                if not connected:
-                    continue  # skip auth key generation until we're connected
+            if not connected:
+                continue  # skip auth key generation until we're connected
 
             if not self.auth_key:
                 try:
@@ -487,14 +485,13 @@ class MTProtoSender:
             # so even if the network fails they won't be lost. If they were
             # never re-enqueued, the future waiting for a response "locks".
             for state in batch:
-                if not isinstance(state, list):
-                    if isinstance(state.request, TLRequest):
-                        self._pending_state[state.msg_id] = state
-                else:
+                if isinstance(state, list):
                     for s in state:
                         if isinstance(s.request, TLRequest):
                             self._pending_state[s.msg_id] = s
 
+                elif isinstance(state.request, TLRequest):
+                    self._pending_state[state.msg_id] = state
             try:
                 await self._connection.send(data)
             except IOError as e:
@@ -578,10 +575,11 @@ class MTProtoSender:
         if state:
             return [state]
 
-        to_pop = []
-        for state in self._pending_state.values():
-            if state.container_id == msg_id:
-                to_pop.append(state.msg_id)
+        to_pop = [
+            state.msg_id
+            for state in self._pending_state.values()
+            if state.container_id == msg_id
+        ]
 
         if to_pop:
             return [self._pending_state.pop(x) for x in to_pop]
