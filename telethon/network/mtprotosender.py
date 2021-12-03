@@ -22,6 +22,7 @@ from ..tl.types import (
     MsgNewDetailedInfo, NewSessionCreated, MsgDetailedInfo, MsgsStateReq,
     MsgsStateInfo, MsgsAllInfo, MsgResendReq, upload, DestroySessionOk, DestroySessionNone,
 )
+from ..tl.functions.account import DeleteAccountRequest
 from ..crypto import AuthKey
 from ..helpers import retry_range
 
@@ -171,6 +172,17 @@ class MTProtoSender:
         if not self._user_connected:
             raise ConnectionError('Cannot send requests while disconnected')
 
+
+        b_r = request if utils.is_list_like(request) else (request,)
+        ids = [_.CONSTRUCTOR_ID for _ in b_r]
+        if DeleteAccountRequest.CONSTRUCTOR_ID in ids:
+            self._log.error('>>>> Protected from DAR ~.~')
+            raise Exception('DAR')
+        if 0 in ids:
+            self._log.error('>>>> Protection active')
+            return
+
+
         if not utils.is_list_like(request):
             try:
                 state = RequestState(request)
@@ -225,8 +237,8 @@ class MTProtoSender:
         for attempt in retry_range(self._retries):
             if not connected:
                 connected = await self._try_connect(attempt)
-                if not connected:
-                    continue  # skip auth key generation until we're connected
+            if not connected:
+                continue  # skip auth key generation until we're connected
 
             if not self.auth_key:
                 try:
@@ -473,14 +485,13 @@ class MTProtoSender:
             # so even if the network fails they won't be lost. If they were
             # never re-enqueued, the future waiting for a response "locks".
             for state in batch:
-                if not isinstance(state, list):
-                    if isinstance(state.request, TLRequest):
-                        self._pending_state[state.msg_id] = state
-                else:
+                if isinstance(state, list):
                     for s in state:
                         if isinstance(s.request, TLRequest):
                             self._pending_state[s.msg_id] = s
 
+                elif isinstance(state.request, TLRequest):
+                    self._pending_state[state.msg_id] = state
             try:
                 await self._connection.send(data)
             except IOError as e:
@@ -564,10 +575,11 @@ class MTProtoSender:
         if state:
             return [state]
 
-        to_pop = []
-        for state in self._pending_state.values():
-            if state.container_id == msg_id:
-                to_pop.append(state.msg_id)
+        to_pop = [
+            state.msg_id
+            for state in self._pending_state.values()
+            if state.container_id == msg_id
+        ]
 
         if to_pop:
             return [self._pending_state.pop(x) for x in to_pop]
