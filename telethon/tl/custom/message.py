@@ -65,6 +65,9 @@ class Message(ChatGetter, SenderGetter, TLObject):
         pinned (`bool`):
             Whether this message is currently pinned or not.
 
+        noforwards (`bool`):
+            Whether this message can be forwarded or not.
+
         id (`int`):
             The ID of this message. This field is *always* present.
             Any other member is optional and may be `None`.
@@ -141,6 +144,9 @@ class Message(ChatGetter, SenderGetter, TLObject):
             (photo albums or video albums), all of them will
             have the same value here.
 
+        reactions (:tl:`MessageReactions`)
+            Reactions to this message.
+
         restriction_reason (List[:tl:`RestrictionReason`])
             An optional list of reasons why this message was restricted.
             If the list is `None`, this message has not been restricted.
@@ -193,6 +199,8 @@ class Message(ChatGetter, SenderGetter, TLObject):
             legacy: Optional[bool] = None,
             edit_hide: Optional[bool] = None,
             pinned: Optional[bool] = None,
+            noforwards: Optional[bool] = None,
+            reactions: Optional[types.TypeMessageReactions] = None,
             restriction_reason: Optional[types.TypeRestrictionReason] = None,
             forwards: Optional[int] = None,
             replies: Optional[types.TypeMessageReplies] = None,
@@ -210,6 +218,7 @@ class Message(ChatGetter, SenderGetter, TLObject):
         self.legacy = legacy
         self.edit_hide = edit_hide
         self.id = id
+        self.from_id = from_id
         self.peer_id = peer_id
         self.fwd_from = fwd_from
         self.via_bot_id = via_bot_id
@@ -224,8 +233,10 @@ class Message(ChatGetter, SenderGetter, TLObject):
         self.replies = replies
         self.edit_date = edit_date
         self.pinned = pinned
+        self.noforwards = noforwards
         self.post_author = post_author
         self.grouped_id = grouped_id
+        self.reactions = reactions
         self.restriction_reason = restriction_reason
         self.ttl_period = ttl_period
         self.action = action
@@ -254,7 +265,6 @@ class Message(ChatGetter, SenderGetter, TLObject):
             # (layer 119+), but the sender can only be the chat we're in.
             if post or (not out and isinstance(peer_id, types.PeerUser)):
                 sender_id = utils.get_peer_id(peer_id)
-        self.from_id = sender_id
 
         # Note that these calls would reset the client
         ChatGetter.__init__(self, peer_id, broadcast=post)
