@@ -29,6 +29,7 @@ class Connection(abc.ABC):
     ``ConnectionError``, which will raise when attempting to send if
     the client is disconnected (includes remote disconnections).
     """
+
     # this static attribute should be redefined by `Connection` subclasses and
     # should be one of `PacketCodec` implementations
     packet_codec = None
@@ -54,15 +55,16 @@ class Connection(abc.ABC):
     def _wrap_socket_ssl(sock):
         if ssl_mod is None:
             raise RuntimeError(
-                'Cannot use proxy that requires SSL '
-                'without the SSL module being available'
+                "Cannot use proxy that requires SSL "
+                "without the SSL module being available"
             )
 
         return ssl_mod.wrap_socket(
             sock,
             do_handshake_on_connect=True,
             ssl_version=ssl_mod.PROTOCOL_SSLv23,
-            ciphers='ADH-AES256-SHA')
+            ciphers="ADH-AES256-SHA",
+        )
 
     @staticmethod
     def _parse_proxy(proxy_type, addr, port, rdns=True, username=None, password=None):
@@ -76,11 +78,11 @@ class Connection(abc.ABC):
             # We do the check for numerical values here
             # to be backwards compatible with PySocks proxy format,
             # (since socks.SOCKS5 == 2, socks.SOCKS4 == 1, socks.HTTP == 3)
-            if proxy_type == ProxyType.SOCKS5 or proxy_type == 2 or proxy_type == "socks5":
+            if proxy_type in [ProxyType.SOCKS5, 2, "socks5"]:
                 protocol = ProxyType.SOCKS5
-            elif proxy_type == ProxyType.SOCKS4 or proxy_type == 1 or proxy_type == "socks4":
+            elif proxy_type in [ProxyType.SOCKS4, 1, "socks4"]:
                 protocol = ProxyType.SOCKS4
-            elif proxy_type == ProxyType.HTTP or proxy_type == 3 or proxy_type == "http":
+            elif proxy_type in [ProxyType.HTTP, 3, "http"]:
                 protocol = ProxyType.HTTP
             else:
                 raise ValueError("Unknown proxy protocol type: {}".format(proxy_type))
@@ -91,11 +93,11 @@ class Connection(abc.ABC):
         else:
             from socks import SOCKS5, SOCKS4, HTTP
 
-            if proxy_type == 2 or proxy_type == "socks5":
+            if proxy_type in [2, "socks5"]:
                 protocol = SOCKS5
-            elif proxy_type == 1 or proxy_type == "socks4":
+            elif proxy_type in [1, "socks4"]:
                 protocol = SOCKS4
-            elif proxy_type == 3 or proxy_type == "http":
+            elif proxy_type in [3, "http"]:
                 protocol = HTTP
             else:
                 raise ValueError("Unknown proxy protocol type: {}".format(proxy_type))
@@ -133,9 +135,7 @@ class Connection(abc.ABC):
 
             if local_addr is None:
                 sock = await proxy.connect(
-                    dest_host=self._ip,
-                    dest_port=self._port,
-                    timeout=timeout
+                    dest_host=self._ip, dest_port=self._port, timeout=timeout
                 )
             else:
                 # Here we start manual setup of the socket.
@@ -143,8 +143,13 @@ class Connection(abc.ABC):
                 # not the destination one (!), because the socket
                 # connects to the proxy server, not destination server.
                 # IPv family is also checked on proxy address.
-                if ':' in proxy.proxy_host:
-                    mode, address = socket.AF_INET6, (proxy.proxy_host, proxy.proxy_port, 0, 0)
+                if ":" in proxy.proxy_host:
+                    mode, address = socket.AF_INET6, (
+                        proxy.proxy_host,
+                        proxy.proxy_port,
+                        0,
+                        0,
+                    )
                 else:
                     mode, address = socket.AF_INET, (proxy.proxy_host, proxy.proxy_port)
 
@@ -156,7 +161,7 @@ class Connection(abc.ABC):
                 # Actual TCP connection is performed here.
                 await asyncio.wait_for(
                     asyncio.get_event_loop().sock_connect(sock=sock, address=address),
-                    timeout=timeout
+                    timeout=timeout,
                 )
 
                 # As our socket is already created and connected,
@@ -166,7 +171,7 @@ class Connection(abc.ABC):
                     dest_host=self._ip,
                     dest_port=self._port,
                     timeout=timeout,
-                    _socket=sock
+                    _socket=sock,
                 )
 
         else:
@@ -175,7 +180,7 @@ class Connection(abc.ABC):
             # Here `address` represents destination address (not proxy), because of
             # the `PySocks` implementation of the connection routine.
             # IPv family is checked on proxy address, not destination address.
-            if ':' in parsed[1]:
+            if ":" in parsed[1]:
                 mode, address = socket.AF_INET6, (self._ip, self._port, 0, 0)
             else:
                 mode, address = socket.AF_INET, (self._ip, self._port)
@@ -191,7 +196,7 @@ class Connection(abc.ABC):
             # Actual TCP connection and negotiation performed here.
             await asyncio.wait_for(
                 asyncio.get_event_loop().sock_connect(sock=sock, address=address),
-                timeout=timeout
+                timeout=timeout,
             )
 
             sock.setblocking(False)
@@ -199,33 +204,27 @@ class Connection(abc.ABC):
         return sock
 
     async def _connect(self, timeout=None, ssl=None):
-        if self._local_addr is not None:
-            # NOTE: If port is not specified, we use 0 port
-            # to notify the OS that port should be chosen randomly
-            # from the available ones.
-            if isinstance(self._local_addr, tuple) and len(self._local_addr) == 2:
-                local_addr = self._local_addr
-            elif isinstance(self._local_addr, str):
-                local_addr = (self._local_addr, 0)
-            else:
-                raise ValueError("Unknown local address format: {}".format(self._local_addr))
-        else:
+        if self._local_addr is None:
             local_addr = None
 
+        elif isinstance(self._local_addr, tuple) and len(self._local_addr) == 2:
+            local_addr = self._local_addr
+        elif isinstance(self._local_addr, str):
+            local_addr = (self._local_addr, 0)
+        else:
+            raise ValueError(
+                "Unknown local address format: {}".format(self._local_addr)
+            )
         if not self._proxy:
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(
-                    host=self._ip,
-                    port=self._port,
-                    ssl=ssl,
-                    local_addr=local_addr
-                ), timeout=timeout)
+                    host=self._ip, port=self._port, ssl=ssl, local_addr=local_addr
+                ),
+                timeout=timeout,
+            )
         else:
             # Proxy setup, connection and negotiation is performed here.
-            sock = await self._proxy_connect(
-                timeout=timeout,
-                local_addr=local_addr
-            )
+            sock = await self._proxy_connect(timeout=timeout, local_addr=local_addr)
 
             # Wrap socket in SSL context (if provided)
             if ssl:
@@ -256,9 +255,7 @@ class Connection(abc.ABC):
         self._connected = False
 
         await helpers._cancel(
-            self._log,
-            send_task=self._send_task,
-            recv_task=self._recv_task
+            self._log, send_task=self._send_task, recv_task=self._recv_task
         )
 
         if self._writer:
@@ -271,7 +268,7 @@ class Connection(abc.ABC):
                     # * OSError: No route to host and
                     # * OSError: [Errno 32] Broken pipe
                     # * ConnectionResetError
-                    self._log.info('%s during disconnect: %s', type(e), e)
+                    self._log.info("%s during disconnect: %s", type(e), e)
 
     def send(self, data):
         """
@@ -280,7 +277,7 @@ class Connection(abc.ABC):
         This method returns a coroutine.
         """
         if not self._connected:
-            raise ConnectionError('Not connected')
+            raise ConnectionError("Not connected")
 
         return self._send_queue.put(data)
 
@@ -295,7 +292,7 @@ class Connection(abc.ABC):
             if result:  # None = sentinel value = keep trying
                 return result
 
-        raise ConnectionError('Not connected')
+        raise ConnectionError("Not connected")
 
     async def _send_loop(self):
         """
@@ -309,9 +306,9 @@ class Connection(abc.ABC):
             pass
         except Exception as e:
             if isinstance(e, IOError):
-                self._log.info('The server closed the connection while sending')
+                self._log.info("The server closed the connection while sending")
             else:
-                self._log.exception('Unexpected exception in the send loop')
+                self._log.exception("Unexpected exception in the send loop")
 
             await self.disconnect()
 
@@ -326,13 +323,13 @@ class Connection(abc.ABC):
                 break
             except Exception as e:
                 if isinstance(e, (IOError, asyncio.IncompleteReadError)):
-                    msg = 'The server closed the connection'
+                    msg = "The server closed the connection"
                     self._log.info(msg)
                 elif isinstance(e, InvalidChecksumError):
-                    msg = 'The server response had an invalid checksum'
+                    msg = "The server response had an invalid checksum"
                     self._log.info(msg)
                 else:
-                    msg = 'Unexpected exception in the receive loop'
+                    msg = "Unexpected exception in the receive loop"
                     self._log.exception(msg)
 
                 await self.disconnect()
@@ -367,9 +364,8 @@ class Connection(abc.ABC):
         return await self._codec.read_packet(self._reader)
 
     def __str__(self):
-        return '{}:{}/{}'.format(
-            self._ip, self._port,
-            self.__class__.__name__.replace('Connection', '')
+        return "{}:{}/{}".format(
+            self._ip, self._port, self.__class__.__name__.replace("Connection", "")
         )
 
 
@@ -377,6 +373,7 @@ class ObfuscatedConnection(Connection):
     """
     Base class for "obfuscated" connections ("obfuscated2", "mtproto proxy")
     """
+
     """
     This attribute should be redefined by subclasses
     """

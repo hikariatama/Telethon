@@ -9,21 +9,25 @@ import warnings
 from ..helpers import add_surrogate, del_surrogate, within_surrogate, strip_text
 from ..tl import TLObject
 from ..tl.types import (
-    MessageEntityBold, MessageEntityItalic, MessageEntityCode,
-    MessageEntityPre, MessageEntityTextUrl, MessageEntityMentionName,
-    MessageEntityStrike
+    MessageEntityBold,
+    MessageEntityItalic,
+    MessageEntityCode,
+    MessageEntityPre,
+    MessageEntityTextUrl,
+    MessageEntityMentionName,
+    MessageEntityStrike,
 )
 
 DEFAULT_DELIMITERS = {
-    '**': MessageEntityBold,
-    '__': MessageEntityItalic,
-    '~~': MessageEntityStrike,
-    '`': MessageEntityCode,
-    '```': MessageEntityPre
+    "**": MessageEntityBold,
+    "__": MessageEntityItalic,
+    "~~": MessageEntityStrike,
+    "`": MessageEntityCode,
+    "```": MessageEntityPre,
 }
 
-DEFAULT_URL_RE = re.compile(r'\[([\S\s]+?)\]\((.+?)\)')
-DEFAULT_URL_FORMAT = '[{0}]({1})'
+DEFAULT_URL_RE = re.compile(r"\[([\S\s]+?)\]\((.+?)\)")
+DEFAULT_URL_FORMAT = "[{0}]({1})"
 
 
 def overlap(a, b, x, y):
@@ -56,8 +60,12 @@ def parse(message, delimiters=None, url_re=None):
     # Build a regex to efficiently test all delimiters at once.
     # Note that the largest delimiter should go first, we don't
     # want ``` to be interpreted as a single back-tick in a code block.
-    delim_re = re.compile('|'.join('({})'.format(re.escape(k))
-                                   for k in sorted(delimiters, key=len, reverse=True)))
+    delim_re = re.compile(
+        "|".join(
+            "({})".format(re.escape(k))
+            for k in sorted(delimiters, key=len, reverse=True)
+        )
+    )
 
     # Cannot use a for loop because we need to skip some indices
     i = 0
@@ -67,10 +75,7 @@ def parse(message, delimiters=None, url_re=None):
     # The offset will just be half the index we're at.
     message = add_surrogate(message)
     while i < len(message):
-        m = delim_re.match(message, pos=i)
-
-        # Did we find some delimiter here at `i`?
-        if m:
+        if m := delim_re.match(message, pos=i):
             delim = next(filter(None, m.groups()))
 
             # +1 to avoid matching right after (e.g. "****")
@@ -80,26 +85,24 @@ def parse(message, delimiters=None, url_re=None):
             if end != -1:
 
                 # Remove the delimiter from the string
-                message = ''.join((
+                message = "".join(
+                    (
                         message[:i],
-                        message[i + len(delim):end],
-                        message[end + len(delim):]
-                ))
+                        message[i + len(delim) : end],
+                        message[end + len(delim) :],
+                    )
+                )
 
                 # Check other affected entities
                 for ent in result:
                     # If the end is after our start, it is affected
                     if ent.offset + ent.length > i:
                         # If the old start is also before ours, it is fully enclosed
-                        if ent.offset <= i:
-                            ent.length -= len(delim) * 2
-                        else:
-                            ent.length -= len(delim)
-
+                        ent.length -= len(delim) * 2 if ent.offset <= i else len(delim)
                 # Append the found entity
                 ent = delimiters[delim]
                 if ent == MessageEntityPre:
-                    result.append(ent(i, end - i - len(delim), ''))  # has 'lang'
+                    result.append(ent(i, end - i - len(delim), ""))  # has 'lang'
                 else:
                     result.append(ent(i, end - i - len(delim)))
 
@@ -110,14 +113,11 @@ def parse(message, delimiters=None, url_re=None):
                 continue
 
         elif url_re:
-            m = url_re.match(message, pos=i)
-            if m:
+            if m := url_re.match(message, pos=i):
                 # Replace the whole match with only the inline URL text.
-                message = ''.join((
-                    message[:m.start()],
-                    m.group(1),
-                    message[m.end():]
-                ))
+                message = "".join(
+                    (message[: m.start()], m.group(1), message[m.end() :])
+                )
 
                 delim_size = m.end() - m.start() - len(m.group())
                 for ent in result:
@@ -125,10 +125,13 @@ def parse(message, delimiters=None, url_re=None):
                     if ent.offset + ent.length > m.start():
                         ent.length -= delim_size
 
-                result.append(MessageEntityTextUrl(
-                    offset=m.start(), length=len(m.group(1)),
-                    url=del_surrogate(m.group(2))
-                ))
+                result.append(
+                    MessageEntityTextUrl(
+                        offset=m.start(),
+                        length=len(m.group(1)),
+                        url=del_surrogate(m.group(2)),
+                    )
+                )
                 i += len(m.group(1))
                 continue
 
@@ -156,7 +159,9 @@ def unparse(text, entities, delimiters=None, url_fmt=None):
         delimiters = DEFAULT_DELIMITERS
 
     if url_fmt is not None:
-        warnings.warn('url_fmt is deprecated')  # since it complicates everything *a lot*
+        warnings.warn(
+            "url_fmt is deprecated"
+        )  # since it complicates everything *a lot*
 
     if isinstance(entities, TLObject):
         entities = (entities,)
@@ -167,20 +172,16 @@ def unparse(text, entities, delimiters=None, url_fmt=None):
     for entity in entities:
         s = entity.offset
         e = entity.offset + entity.length
-        delimiter = delimiters.get(type(entity), None)
-        if delimiter:
-            insert_at.append((s, delimiter))
-            insert_at.append((e, delimiter))
+        if delimiter := delimiters.get(type(entity), None):
+            insert_at.extend(((s, delimiter), (e, delimiter)))
         else:
             url = None
             if isinstance(entity, MessageEntityTextUrl):
                 url = entity.url
             elif isinstance(entity, MessageEntityMentionName):
-                url = 'tg://user?id={}'.format(entity.user_id)
+                url = "tg://user?id={}".format(entity.user_id)
             if url:
-                insert_at.append((s, '['))
-                insert_at.append((e, ']({})'.format(url)))
-
+                insert_at.extend(((s, "["), (e, "]({})".format(url))))
     insert_at.sort(key=lambda t: t[0])
     while insert_at:
         at, what = insert_at.pop()

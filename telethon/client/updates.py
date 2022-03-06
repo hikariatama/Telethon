@@ -18,11 +18,12 @@ if typing.TYPE_CHECKING:
 
 Callback = typing.Callable[[typing.Any], typing.Any]
 
+
 class UpdateMethods:
 
     # region Public methods
 
-    async def _run_until_disconnected(self: 'TelegramClient'):
+    async def _run_until_disconnected(self: "TelegramClient"):
         try:
             # Make a high-level request to notify that we want updates
             await self(functions.updates.GetStateRequest())
@@ -32,7 +33,7 @@ class UpdateMethods:
         finally:
             await self.disconnect()
 
-    async def set_receive_updates(self: 'TelegramClient', receive_updates):
+    async def set_receive_updates(self: "TelegramClient", receive_updates):
         """
         Change the value of `receive_updates`.
 
@@ -43,7 +44,7 @@ class UpdateMethods:
         if receive_updates:
             await self(functions.updates.GetStateRequest())
 
-    def run_until_disconnected(self: 'TelegramClient'):
+    def run_until_disconnected(self: "TelegramClient"):
         """
         Runs the event loop until the library is disconnected.
 
@@ -88,7 +89,7 @@ class UpdateMethods:
             # No loop.run_until_complete; it's already syncified
             self.disconnect()
 
-    def on(self: 'TelegramClient', event: EventBuilder):
+    def on(self: "TelegramClient", event: EventBuilder):
         """
         Decorator used to `add_event_handler` more conveniently.
 
@@ -109,6 +110,7 @@ class UpdateMethods:
                 async def handler(event):
                     ...
         """
+
         def decorator(f):
             self.add_event_handler(f, event)
             return f
@@ -116,9 +118,8 @@ class UpdateMethods:
         return decorator
 
     def add_event_handler(
-            self: 'TelegramClient',
-            callback: Callback,
-            event: EventBuilder = None):
+        self: "TelegramClient", callback: Callback, event: EventBuilder = None
+    ):
         """
         Registers a new event handler callback.
 
@@ -165,9 +166,8 @@ class UpdateMethods:
         self._event_builders.append((event, callback))
 
     def remove_event_handler(
-            self: 'TelegramClient',
-            callback: Callback,
-            event: EventBuilder = None) -> int:
+        self: "TelegramClient", callback: Callback, event: EventBuilder = None
+    ) -> int:
         """
         Inverse operation of `add_event_handler()`.
 
@@ -203,8 +203,9 @@ class UpdateMethods:
 
         return found
 
-    def list_event_handlers(self: 'TelegramClient')\
-            -> 'typing.Sequence[typing.Tuple[Callback, EventBuilder]]':
+    def list_event_handlers(
+        self: "TelegramClient",
+    ) -> "typing.Sequence[typing.Tuple[Callback, EventBuilder]]":
         """
         Lists all registered event handlers.
 
@@ -224,7 +225,7 @@ class UpdateMethods:
         """
         return [(callback, event) for event, callback in self._event_builders]
 
-    async def catch_up(self: 'TelegramClient'):
+    async def catch_up(self: "TelegramClient"):
         """
         "Catches up" on the missed updates while the client was offline.
         You should call this method after registering the event handlers
@@ -244,27 +245,26 @@ class UpdateMethods:
         self.session.catching_up = True
         try:
             while True:
-                d = await self(functions.updates.GetDifferenceRequest(
-                    pts, date, 0
-                ))
-                if isinstance(d, (types.updates.DifferenceSlice,
-                                  types.updates.Difference)):
+                d = await self(functions.updates.GetDifferenceRequest(pts, date, 0))
+                if isinstance(
+                    d, (types.updates.DifferenceSlice, types.updates.Difference)
+                ):
                     if isinstance(d, types.updates.Difference):
                         state = d.state
                     else:
                         state = d.intermediate_state
 
                     pts, date = state.pts, state.date
-                    self._handle_update(types.Updates(
-                        users=d.users,
-                        chats=d.chats,
-                        date=state.date,
-                        seq=state.seq,
-                        updates=d.other_updates + [
-                            types.UpdateNewMessage(m, 0, 0)
-                            for m in d.new_messages
-                        ]
-                    ))
+                    self._handle_update(
+                        types.Updates(
+                            users=d.users,
+                            chats=d.chats,
+                            date=state.date,
+                            seq=state.seq,
+                            updates=d.other_updates
+                            + [types.UpdateNewMessage(m, 0, 0) for m in d.new_messages],
+                        )
+                    )
 
                     # TODO Implement upper limit (max_pts)
                     # We don't want to fetch updates we already know about.
@@ -300,13 +300,15 @@ class UpdateMethods:
     # It is important to not make _handle_update async because we rely on
     # the order that the updates arrive in to update the pts and date to
     # be always-increasing. There is also no need to make this async.
-    def _handle_update(self: 'TelegramClient', update):
+    def _handle_update(self: "TelegramClient", update):
         self.session.process_entities(update)
         self._entity_cache.add(update)
 
         if isinstance(update, (types.Updates, types.UpdatesCombined)):
-            entities = {utils.get_peer_id(x): x for x in
-                        itertools.chain(update.users, update.chats)}
+            entities = {
+                utils.get_peer_id(x): x
+                for x in itertools.chain(update.users, update.chats)
+            }
             for u in update.updates:
                 self._process_update(u, update.updates, entities=entities)
         elif isinstance(update, types.UpdateShort):
@@ -316,7 +318,7 @@ class UpdateMethods:
 
         self._state_cache.update(update)
 
-    def _process_update(self: 'TelegramClient', update, others, entities=None):
+    def _process_update(self: "TelegramClient", update, others, entities=None):
         update._entities = entities or {}
 
         # This part is somewhat hot so we don't bother patching
@@ -336,14 +338,12 @@ class UpdateMethods:
 
         self._state_cache.update(update)
 
-    async def _update_loop(self: 'TelegramClient'):
+    async def _update_loop(self: "TelegramClient"):
         # Pings' ID don't really need to be secure, just "random"
-        rnd = lambda: random.randrange(-2**63, 2**63)
+        rnd = lambda: random.randrange(-(2**63), 2**63)
         while self.is_connected():
             try:
-                await asyncio.wait_for(
-                    self.disconnected, timeout=60
-                )
+                await asyncio.wait_for(self.disconnected, timeout=60)
                 continue  # We actually just want to act upon timeout
             except asyncio.TimeoutError:
                 pass
@@ -390,34 +390,34 @@ class UpdateMethods:
                 except (ConnectionError, asyncio.CancelledError):
                     return
 
-    async def _dispatch_queue_updates(self: 'TelegramClient'):
+    async def _dispatch_queue_updates(self: "TelegramClient"):
         while not self._updates_queue.empty():
             await self._dispatch_update(*self._updates_queue.get_nowait())
 
         self._dispatching_updates_queue.clear()
 
-    async def _dispatch_update(self: 'TelegramClient', update, others, channel_id, pts_date):
-        if not self._entity_cache.ensure_cached(update):
-            # We could add a lock to not fetch the same pts twice if we are
-            # already fetching it. However this does not happen in practice,
-            # which makes sense, because different updates have different pts.
-            if self._state_cache.update(update, check_only=True):
-                # If the update doesn't have pts, fetching won't do anything.
-                # For example, UpdateUserStatus or UpdateChatUserTyping.
-                try:
-                    await self._get_difference(update, channel_id, pts_date)
-                except OSError:
-                    pass  # We were disconnected, that's okay
-                except errors.RPCError:
-                    # There's a high chance the request fails because we lack
-                    # the channel. Because these "happen sporadically" (#1428)
-                    # we should be okay (no flood waits) even if more occur.
-                    pass
-                except ValueError:
-                    # There is a chance that GetFullChannelRequest and GetDifferenceRequest
-                    # inside the _get_difference() function will end up with
-                    # ValueError("Request was unsuccessful N time(s)") for whatever reasons.
-                    pass
+    async def _dispatch_update(
+        self: "TelegramClient", update, others, channel_id, pts_date
+    ):
+        if not self._entity_cache.ensure_cached(
+            update
+        ) and self._state_cache.update(update, check_only=True):
+            # If the update doesn't have pts, fetching won't do anything.
+            # For example, UpdateUserStatus or UpdateChatUserTyping.
+            try:
+                await self._get_difference(update, channel_id, pts_date)
+            except OSError:
+                pass  # We were disconnected, that's okay
+            except errors.RPCError:
+                # There's a high chance the request fails because we lack
+                # the channel. Because these "happen sporadically" (#1428)
+                # we should be okay (no flood waits) even if more occur.
+                pass
+            except ValueError:
+                # There is a chance that GetFullChannelRequest and GetDifferenceRequest
+                # inside the _get_difference() function will end up with
+                # ValueError("Request was unsuccessful N time(s)") for whatever reasons.
+                pass
 
         if not self._self_input_peer:
             # Some updates require our own ID, so we must make sure
@@ -434,16 +434,13 @@ class UpdateMethods:
         built = EventBuilderDict(self, update, others)
         for conv_set in self._conversations.values():
             for conv in conv_set:
-                ev = built[events.NewMessage]
-                if ev:
+                if ev := built[events.NewMessage]:
                     conv._on_new_message(ev)
 
-                ev = built[events.MessageEdited]
-                if ev:
+                if ev := built[events.MessageEdited]:
                     conv._on_edit(ev)
 
-                ev = built[events.MessageRead]
-                if ev:
+                if ev := built[events.MessageRead]:
                     conv._on_read(ev)
 
                 if conv._custom:
@@ -466,23 +463,26 @@ class UpdateMethods:
             try:
                 await callback(event)
             except errors.AlreadyInConversationError:
-                name = getattr(callback, '__name__', repr(callback))
+                name = getattr(callback, "__name__", repr(callback))
                 self._log[__name__].debug(
                     'Event handler "%s" already has an open conversation, '
-                    'ignoring new one', name)
+                    "ignoring new one",
+                    name,
+                )
             except events.StopPropagation:
-                name = getattr(callback, '__name__', repr(callback))
+                name = getattr(callback, "__name__", repr(callback))
                 self._log[__name__].debug(
-                    'Event handler "%s" stopped chain of propagation '
-                    'for event %s.', name, type(event).__name__
+                    'Event handler "%s" stopped chain of propagation ' "for event %s.",
+                    name,
+                    type(event).__name__,
                 )
                 break
             except Exception as e:
                 if not isinstance(e, asyncio.CancelledError) or self.is_connected():
-                    name = getattr(callback, '__name__', repr(callback))
-                    self._log[__name__].exception('Unhandled exception on %s', name)
+                    name = getattr(callback, "__name__", repr(callback))
+                    self._log[__name__].exception("Unhandled exception on %s", name)
 
-    async def _dispatch_event(self: 'TelegramClient', event):
+    async def _dispatch_event(self: "TelegramClient", event):
         """
         Dispatches a single, out-of-order event. Used by `AlbumHack`.
         """
@@ -507,23 +507,26 @@ class UpdateMethods:
             try:
                 await callback(event)
             except errors.AlreadyInConversationError:
-                name = getattr(callback, '__name__', repr(callback))
+                name = getattr(callback, "__name__", repr(callback))
                 self._log[__name__].debug(
                     'Event handler "%s" already has an open conversation, '
-                    'ignoring new one', name)
+                    "ignoring new one",
+                    name,
+                )
             except events.StopPropagation:
-                name = getattr(callback, '__name__', repr(callback))
+                name = getattr(callback, "__name__", repr(callback))
                 self._log[__name__].debug(
-                    'Event handler "%s" stopped chain of propagation '
-                    'for event %s.', name, type(event).__name__
+                    'Event handler "%s" stopped chain of propagation ' "for event %s.",
+                    name,
+                    type(event).__name__,
                 )
                 break
             except Exception as e:
                 if not isinstance(e, asyncio.CancelledError) or self.is_connected():
-                    name = getattr(callback, '__name__', repr(callback))
-                    self._log[__name__].exception('Unhandled exception on %s', name)
+                    name = getattr(callback, "__name__", repr(callback))
+                    self._log[__name__].exception("Unhandled exception on %s", name)
 
-    async def _get_difference(self: 'TelegramClient', update, channel_id, pts_date):
+    async def _get_difference(self: "TelegramClient", update, channel_id, pts_date):
         """
         Get the difference for this `channel_id` if any, then load entities.
 
@@ -532,13 +535,16 @@ class UpdateMethods:
         """
         # Fetch since the last known pts/date before this update arrived,
         # in order to fetch this update at full, including its entities.
-        self._log[__name__].debug('Getting difference for entities '
-                                  'for %r', update.__class__)
+        self._log[__name__].debug(
+            "Getting difference for entities " "for %r", update.__class__
+        )
         if channel_id:
             # There are reports where we somehow call get channel difference
             # with `InputPeerEmpty`. Check our assumptions to better debug
             # this when it happens.
-            assert isinstance(channel_id, int), 'channel_id was {}, not int in {}'.format(type(channel_id), update)
+            assert isinstance(
+                channel_id, int
+            ), "channel_id was {}, not int in {}".format(type(channel_id), update)
             try:
                 # Wrap the ID inside a peer to ensure we get a channel back.
                 where = await self.get_input_entity(types.PeerChannel(channel_id))
@@ -549,19 +555,23 @@ class UpdateMethods:
 
             if not pts_date:
                 # First-time, can't get difference. Get pts instead.
-                result = await self(functions.channels.GetFullChannelRequest(
-                    utils.get_input_channel(where)
-                ))
+                result = await self(
+                    functions.channels.GetFullChannelRequest(
+                        utils.get_input_channel(where)
+                    )
+                )
                 self._state_cache[channel_id] = result.full_chat.pts
                 return
 
-            result = await self(functions.updates.GetChannelDifferenceRequest(
-                channel=where,
-                filter=types.ChannelMessagesFilterEmpty(),
-                pts=pts_date,  # just pts
-                limit=100,
-                force=True
-            ))
+            result = await self(
+                functions.updates.GetChannelDifferenceRequest(
+                    channel=where,
+                    filter=types.ChannelMessagesFilterEmpty(),
+                    pts=pts_date,  # just pts
+                    limit=100,
+                    force=True,
+                )
+            )
         else:
             if not pts_date[0]:
                 # First-time, can't get difference. Get pts instead.
@@ -569,63 +579,42 @@ class UpdateMethods:
                 self._state_cache[None] = result.pts, result.date
                 return
 
-            result = await self(functions.updates.GetDifferenceRequest(
-                pts=pts_date[0],
-                date=pts_date[1],
-                qts=0
-            ))
+            result = await self(
+                functions.updates.GetDifferenceRequest(
+                    pts=pts_date[0], date=pts_date[1], qts=0
+                )
+            )
 
-        if isinstance(result, (types.updates.Difference,
-                               types.updates.DifferenceSlice,
-                               types.updates.ChannelDifference,
-                               types.updates.ChannelDifferenceTooLong)):
-            update._entities.update({
-                utils.get_peer_id(x): x for x in
-                itertools.chain(result.users, result.chats)
-            })
+        if isinstance(
+            result,
+            (
+                types.updates.Difference,
+                types.updates.DifferenceSlice,
+                types.updates.ChannelDifference,
+                types.updates.ChannelDifferenceTooLong,
+            ),
+        ):
+            update._entities.update(
+                {
+                    utils.get_peer_id(x): x
+                    for x in itertools.chain(result.users, result.chats)
+                }
+            )
 
-    async def _handle_auto_reconnect(self: 'TelegramClient'):
+    async def _handle_auto_reconnect(self: "TelegramClient"):
         # TODO Catch-up
         # For now we make a high-level request to let Telegram
         # know we are still interested in receiving more updates.
         try:
             await self.get_me()
         except Exception as e:
-            self._log[__name__].warning('Error executing high-level request '
-                                        'after reconnect: %s: %s', type(e), e)
+            self._log[__name__].warning(
+                "Error executing high-level request " "after reconnect: %s: %s",
+                type(e),
+                e,
+            )
 
         return
-        try:
-            self._log[__name__].info(
-                'Asking for the current state after reconnect...')
-
-            # TODO consider:
-            # If there aren't many updates while the client is disconnected
-            # (I tried with up to 20), Telegram seems to send them without
-            # asking for them (via updates.getDifference).
-            #
-            # On disconnection, the library should probably set a "need
-            # difference" or "catching up" flag so that any new updates are
-            # ignored, and then the library should call updates.getDifference
-            # itself to fetch them.
-            #
-            # In any case (either there are too many updates and Telegram
-            # didn't send them, or there isn't a lot and Telegram sent them
-            # but we dropped them), we fetch the new difference to get all
-            # missed updates. I feel like this would be the best solution.
-
-            # If a disconnection occurs, the old known state will be
-            # the latest one we were aware of, so we can catch up since
-            # the most recent state we were aware of.
-            await self.catch_up()
-
-            self._log[__name__].info('Successfully fetched missed updates')
-        except errors.RPCError as e:
-            self._log[__name__].warning('Failed to get missed updates after '
-                                        'reconnect: %r', e)
-        except Exception:
-            self._log[__name__].exception(
-                'Unhandled exception while getting update difference after reconnect')
 
     # endregion
 
@@ -634,7 +623,8 @@ class EventBuilderDict:
     """
     Helper "dictionary" to return events from types and cache them.
     """
-    def __init__(self, client: 'TelegramClient', update, others):
+
+    def __init__(self, client: "TelegramClient", update, others):
         self.client = client
         self.update = update
         self.others = others
@@ -644,7 +634,8 @@ class EventBuilderDict:
             return self.__dict__[builder]
         except KeyError:
             event = self.__dict__[builder] = builder.build(
-                self.update, self.others, self.client._self_id)
+                self.update, self.others, self.client._self_id
+            )
 
             if isinstance(event, EventCommon):
                 event.original_update = self.update

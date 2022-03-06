@@ -55,36 +55,44 @@ class CallbackQuery(EventBuilder):
                     Button.inline('Nope', b'no')
                 ])
     """
+
     def __init__(
-            self, chats=None, *, blacklist_chats=False, func=None, data=None, pattern=None):
+        self, chats=None, *, blacklist_chats=False, func=None, data=None, pattern=None
+    ):
         super().__init__(chats, blacklist_chats=blacklist_chats, func=func)
 
         if data and pattern:
             raise ValueError("Only pass either data or pattern not both.")
 
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
         if isinstance(pattern, str):
-            pattern = pattern.encode('utf-8')
+            pattern = pattern.encode("utf-8")
 
-        match = data if data else pattern
+        match = data or pattern
 
         if isinstance(match, bytes):
-            self.match = data if data else re.compile(pattern).match
+            self.match = data or re.compile(pattern).match
         elif not match or callable(match):
             self.match = match
-        elif hasattr(match, 'match') and callable(match.match):
-            if not isinstance(getattr(match, 'pattern', b''), bytes):
-                match = re.compile(match.pattern.encode('utf-8'),
-                                   match.flags & (~re.UNICODE))
+        elif hasattr(match, "match") and callable(match.match):
+            if not isinstance(getattr(match, "pattern", b""), bytes):
+                match = re.compile(
+                    match.pattern.encode("utf-8"), match.flags & (~re.UNICODE)
+                )
 
             self.match = match.match
         else:
-            raise TypeError('Invalid data or pattern type given')
+            raise TypeError("Invalid data or pattern type given")
 
-        self._no_check = all(x is None for x in (
-            self.chats, self.func, self.match,
-        ))
+        self._no_check = all(
+            x is None
+            for x in (
+                self.chats,
+                self.func,
+                self.match,
+            )
+        )
 
     @classmethod
     def build(cls, update, others=None, self_id=None):
@@ -93,7 +101,7 @@ class CallbackQuery(EventBuilder):
         elif isinstance(update, types.UpdateInlineBotCallbackQuery):
             # See https://github.com/LonamiWebs/Telethon/pull/1005
             # The long message ID is actually just msg_id + peer_id
-            mid, pid = struct.unpack('<ii', struct.pack('<q', update.msg_id.id))
+            mid, pid = struct.unpack("<ii", struct.pack("<q", update.msg_id.id))
             peer = types.PeerChannel(-pid) if pid < 0 else types.PeerUser(pid)
             return cls.Event(update, peer, mid)
 
@@ -139,6 +147,7 @@ class CallbackQuery(EventBuilder):
             pattern_match (`obj`, optional):
                 Alias for ``data_match``.
         """
+
         def __init__(self, query, peer, msg_id):
             super().__init__(peer, msg_id=msg_id)
             SenderGetter.__init__(self, query.user_id)
@@ -151,7 +160,8 @@ class CallbackQuery(EventBuilder):
         def _set_client(self, client):
             super()._set_client(client)
             self._sender, self._input_sender = utils._get_entity_pair(
-                self.sender_id, self._entities, client._entity_cache)
+                self.sender_id, self._entities, client._entity_cache
+            )
 
         @property
         def id(self):
@@ -193,7 +203,8 @@ class CallbackQuery(EventBuilder):
             try:
                 chat = await self.get_input_chat() if self.is_channel else None
                 self._message = await self._client.get_messages(
-                    chat, ids=self._message_id)
+                    chat, ids=self._message_id
+                )
             except ValueError:
                 return
 
@@ -205,7 +216,7 @@ class CallbackQuery(EventBuilder):
                 return
 
             self._input_sender = utils.get_input_peer(self._chat)
-            if not getattr(self._input_sender, 'access_hash', True):
+            if not getattr(self._input_sender, "access_hash", True):
                 # getattr with True to handle the InputPeerSelf() case
                 try:
                     self._input_sender = self._client._entity_cache[self._sender_id]
@@ -215,8 +226,7 @@ class CallbackQuery(EventBuilder):
                         self._sender = m._sender
                         self._input_sender = m._input_sender
 
-        async def answer(
-                self, message=None, cache_time=0, *, url=None, alert=False):
+        async def answer(self, message=None, cache_time=0, *, url=None, alert=False):
             """
             Answers the callback query (and stops the loading circle).
 
@@ -247,7 +257,7 @@ class CallbackQuery(EventBuilder):
                     cache_time=cache_time,
                     alert=alert,
                     message=message,
-                    url=url
+                    url=url,
                 )
             )
 
@@ -278,7 +288,8 @@ class CallbackQuery(EventBuilder):
             """
             self._client.loop.create_task(self.answer())
             return await self._client.send_message(
-                await self.get_input_chat(), *args, **kwargs)
+                await self.get_input_chat(), *args, **kwargs
+            )
 
         async def reply(self, *args, **kwargs):
             """
@@ -291,9 +302,10 @@ class CallbackQuery(EventBuilder):
             This method will likely fail if `via_inline` is `True`.
             """
             self._client.loop.create_task(self.answer())
-            kwargs['reply_to'] = self.query.msg_id
+            kwargs["reply_to"] = self.query.msg_id
             return await self._client.send_message(
-                await self.get_input_chat(), *args, **kwargs)
+                await self.get_input_chat(), *args, **kwargs
+            )
 
         async def edit(self, *args, **kwargs):
             """
@@ -318,8 +330,7 @@ class CallbackQuery(EventBuilder):
                 )
             else:
                 return await self._client.edit_message(
-                    await self.get_input_chat(), self.query.msg_id,
-                    *args, **kwargs
+                    await self.get_input_chat(), self.query.msg_id, *args, **kwargs
                 )
 
         async def delete(self, *args, **kwargs):
@@ -338,6 +349,5 @@ class CallbackQuery(EventBuilder):
             """
             self._client.loop.create_task(self.answer())
             return await self._client.delete_messages(
-                await self.get_input_chat(), [self.query.msg_id],
-                *args, **kwargs
+                await self.get_input_chat(), [self.query.msg_id], *args, **kwargs
             )

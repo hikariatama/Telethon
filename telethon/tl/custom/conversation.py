@@ -17,9 +17,10 @@ def _checks_cancelled(f):
     @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
         if self._cancelled:
-            raise asyncio.CancelledError('The conversation was cancelled before')
+            raise asyncio.CancelledError("The conversation was cancelled before")
 
         return f(self, *args, **kwargs)
+
     return wrapper
 
 
@@ -35,12 +36,21 @@ class Conversation(ChatGetter):
     you should use two conversations and synchronize them
     as you better see fit.
     """
+
     _id_counter = 0
     _custom_counter = 0
 
-    def __init__(self, client, input_chat,
-                 *, timeout, total_timeout, max_messages,
-                 exclusive, replies_are_responses):
+    def __init__(
+        self,
+        client,
+        input_chat,
+        *,
+        timeout,
+        total_timeout,
+        max_messages,
+        exclusive,
+        replies_are_responses
+    ):
         # This call resets the client
         ChatGetter.__init__(self, input_chat=input_chat)
 
@@ -71,11 +81,7 @@ class Conversation(ChatGetter):
         # The user is able to expect two responses for the same message.
         # {desired message ID: next incoming index}
         self._response_indices = {}
-        if replies_are_responses:
-            self._reply_indices = self._response_indices
-        else:
-            self._reply_indices = {}
-
+        self._reply_indices = self._response_indices if replies_are_responses else {}
         self._edit_dates = {}
 
     @_checks_cancelled
@@ -85,8 +91,7 @@ class Conversation(ChatGetter):
         for `telethon.client.messages.MessageMethods.send_message` with
         ``entity`` already set.
         """
-        sent = await self._client.send_message(
-            self._input_chat, *args, **kwargs)
+        sent = await self._client.send_message(self._input_chat, *args, **kwargs)
 
         # Albums will be lists, so handle that
         ms = sent if isinstance(sent, list) else (sent,)
@@ -101,8 +106,7 @@ class Conversation(ChatGetter):
         for `telethon.client.uploads.UploadMethods.send_file` with
         ``entity`` already set.
         """
-        sent = await self._client.send_file(
-            self._input_chat, *args, **kwargs)
+        sent = await self._client.send_file(self._input_chat, *args, **kwargs)
 
         # Albums will be lists, so handle that
         ms = sent if isinstance(sent, list) else (sent,)
@@ -120,15 +124,11 @@ class Conversation(ChatGetter):
         <telethon.client.messages.MessageMethods.send_read_acknowledge>`.
         """
         if message is None:
-            if self._incoming:
-                message = self._incoming[-1].id
-            else:
-                message = 0
+            message = self._incoming[-1].id if self._incoming else 0
         elif not isinstance(message, int):
             message = message.id
 
-        return self._client.send_read_acknowledge(
-            self._input_chat, max_id=message)
+        return self._client.send_read_acknowledge(self._input_chat, max_id=message)
 
     def get_response(self, message=None, *, timeout=None):
         """
@@ -155,8 +155,11 @@ class Conversation(ChatGetter):
                 await conv.send_message('Nice to meet you, {}!'.format(name))
         """
         return self._get_message(
-            message, self._response_indices, self._pending_responses, timeout,
-            lambda x, y: True
+            message,
+            self._response_indices,
+            self._pending_responses,
+            timeout,
+            lambda x, y: True,
         )
 
     def get_reply(self, message=None, *, timeout=None):
@@ -164,12 +167,14 @@ class Conversation(ChatGetter):
         Gets the next message that explicitly replies to a previous one.
         """
         return self._get_message(
-            message, self._reply_indices, self._pending_replies, timeout,
-            lambda x, y: x.reply_to and x.reply_to.reply_to_msg_id == y
+            message,
+            self._reply_indices,
+            self._pending_replies,
+            timeout,
+            lambda x, y: x.reply_to and x.reply_to.reply_to_msg_id == y,
         )
 
-    def _get_message(
-            self, target_message, indices, pending, timeout, condition):
+    def _get_message(self, target_message, indices, pending, timeout, condition):
         """
         Gets the next desired message under the desired condition.
 
@@ -199,12 +204,14 @@ class Conversation(ChatGetter):
         # If there is no last-chosen ID, make sure to pick one *after*
         # the input message, since we don't want responses back in time
         if target_id not in indices:
-            for i, incoming in enumerate(self._incoming):
-                if incoming.id > target_id:
-                    indices[target_id] = i
-                    break
-            else:
-                indices[target_id] = len(self._incoming)
+            indices[target_id] = next(
+                (
+                    i
+                    for i, incoming in enumerate(self._incoming)
+                    if incoming.id > target_id
+                ),
+                len(self._incoming),
+            )
 
         # We will always return a future from here, even if the result
         # can be set immediately. Otherwise, needing to await only
@@ -239,13 +246,15 @@ class Conversation(ChatGetter):
 
         target_date = self._edit_dates.get(target_id, 0)
         earliest_edit = min(
-            (x for x in self._incoming
-             if x.edit_date
-             and x.id > target_id
-             and x.edit_date.timestamp() > target_date
-             ),
+            (
+                x
+                for x in self._incoming
+                if x.edit_date
+                and x.id > target_id
+                and x.edit_date.timestamp() > target_date
+            ),
             key=lambda x: x.edit_date.timestamp(),
-            default=None
+            default=None,
         )
 
         future = self._client.loop.create_future()
@@ -256,7 +265,9 @@ class Conversation(ChatGetter):
 
         # Otherwise the next incoming response will be the one to use
         self._pending_edits[target_id] = future
-        return self._get_result(future, start_time, timeout, self._pending_edits, target_id)
+        return self._get_result(
+            future, start_time, timeout, self._pending_edits, target_id
+        )
 
     def wait_read(self, message=None, *, timeout=None):
         """
@@ -275,7 +286,9 @@ class Conversation(ChatGetter):
             return
 
         self._pending_reads[target_id] = future
-        return self._get_result(future, start_time, timeout, self._pending_reads, target_id)
+        return self._get_result(
+            future, start_time, timeout, self._pending_reads, target_id
+        )
 
     async def wait_event(self, event, *, timeout=None):
         """
@@ -337,7 +350,9 @@ class Conversation(ChatGetter):
         future = self._client.loop.create_future()
         self._custom[counter] = (event, future)
         try:
-            return await self._get_result(future, start_time, timeout, self._custom, counter)
+            return await self._get_result(
+                future, start_time, timeout, self._custom, counter
+            )
         finally:
             # Need to remove it from the dict if it times out, else we may
             # try and fail to set the result later (#1618).
@@ -346,9 +361,7 @@ class Conversation(ChatGetter):
     async def _check_custom(self, built):
         for key, (ev, fut) in list(self._custom.items()):
             ev_type = type(ev)
-            inst = built[ev_type]
-
-            if inst:
+            if inst := built[ev_type]:
                 filter = ev.filter(inst)
                 if inspect.isawaitable(filter):
                     filter = await filter
@@ -363,7 +376,7 @@ class Conversation(ChatGetter):
             return
 
         if len(self._incoming) == self._max_incoming:
-            self._cancel_all(ValueError('Too many incoming messages'))
+            self._cancel_all(ValueError("Too many incoming messages"))
             return
 
         self._incoming.append(response)
@@ -427,7 +440,7 @@ class Conversation(ChatGetter):
         elif self._last_outgoing:
             return self._last_outgoing
         else:
-            raise ValueError('No message was sent previously')
+            raise ValueError("No message was sent previously")
 
     @_checks_cancelled
     def _get_result(self, future, start_time, timeout, pending, target_id):
@@ -444,16 +457,16 @@ class Conversation(ChatGetter):
         #       response could be set twice. So responses must be
         #       cleared when their futures are set to a result.
         return asyncio.wait_for(
-            future,
-            timeout=None if due == float('inf') else due - time.time()
+            future, timeout=None if due == float("inf") else due - time.time()
         )
 
     def _cancel_all(self, exception=None):
         self._cancelled = True
         for pending in itertools.chain(
-                self._pending_responses.values(),
-                self._pending_replies.values(),
-                self._pending_edits.values()):
+            self._pending_responses.values(),
+            self._pending_replies.values(),
+            self._pending_edits.values(),
+        ):
             if exception:
                 pending.set_exception(exception)
             else:
@@ -466,8 +479,7 @@ class Conversation(ChatGetter):
                 fut.cancel()
 
     async def __aenter__(self):
-        self._input_chat = \
-            await self._client.get_input_entity(self._input_chat)
+        self._input_chat = await self._client.get_input_entity(self._input_chat)
 
         self._chat_peer = utils.get_peer(self._input_chat)
 
@@ -483,16 +495,22 @@ class Conversation(ChatGetter):
         self._last_outgoing = 0
         self._last_incoming = 0
         for d in (
-                self._outgoing, self._incoming,
-                self._pending_responses, self._pending_replies,
-                self._pending_edits, self._response_indices,
-                self._reply_indices, self._edit_dates, self._custom):
+            self._outgoing,
+            self._incoming,
+            self._pending_responses,
+            self._pending_replies,
+            self._pending_edits,
+            self._response_indices,
+            self._reply_indices,
+            self._edit_dates,
+            self._custom,
+        ):
             d.clear()
 
         if self._total_timeout:
             self._total_due = time.time() + self._total_timeout
         else:
-            self._total_due = float('inf')
+            self._total_due = float("inf")
 
         return self
 

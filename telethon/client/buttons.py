@@ -7,8 +7,8 @@ from ..tl import types, custom
 class ButtonMethods:
     @staticmethod
     def build_reply_markup(
-            buttons: 'typing.Optional[hints.MarkupLike]',
-            inline_only: bool = False) -> 'typing.Optional[types.TypeReplyMarkup]':
+        buttons: "typing.Optional[hints.MarkupLike]", inline_only: bool = False
+    ) -> "typing.Optional[types.TypeReplyMarkup]":
         """
         Builds a :tl:`ReplyInlineMarkup` or :tl:`ReplyKeyboardMarkup` for
         the given buttons.
@@ -42,7 +42,7 @@ class ButtonMethods:
             return None
 
         try:
-            if buttons.SUBCLASS_OF_ID == 0xe2e10ef2:
+            if buttons.SUBCLASS_OF_ID == 0xE2E10EF2:
                 return buttons  # crc32(b'ReplyMarkup'):
         except AttributeError:
             pass
@@ -78,7 +78,7 @@ class ButtonMethods:
                 is_inline |= inline
                 is_normal |= not inline
 
-                if button.SUBCLASS_OF_ID == 0xbad74a3:
+                if button.SUBCLASS_OF_ID == 0xBAD74A3:
                     # 0xbad74a3 == crc32(b'KeyboardButton')
                     current.append(button)
 
@@ -86,11 +86,12 @@ class ButtonMethods:
                 rows.append(types.KeyboardButtonRow(current))
 
         if inline_only and is_normal:
-            raise ValueError('You cannot use non-inline buttons here')
+            raise ValueError("You cannot use non-inline buttons here")
         elif is_inline == is_normal and is_normal:
-            raise ValueError('You cannot mix inline with normal buttons')
+            raise ValueError("You cannot mix inline with normal buttons")
         elif is_inline:
             return types.ReplyInlineMarkup(rows)
         # elif is_normal:
         return types.ReplyKeyboardMarkup(
-            rows, resize=resize, single_use=single_use, selective=selective)
+            rows, resize=resize, single_use=single_use, selective=selective
+        )

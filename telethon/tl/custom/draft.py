@@ -24,6 +24,7 @@ class Draft:
         reply_to_msg_id (`int`):
             The message ID that the draft will reply to.
     """
+
     def __init__(self, client, entity, draft):
         self._client = client
         self._peer = get_peer(entity)
@@ -31,7 +32,7 @@ class Draft:
         self._input_entity = get_input_peer(entity) if entity else None
 
         if not draft or not isinstance(draft, DraftMessage):
-            draft = DraftMessage('', None, None, None, None)
+            draft = DraftMessage("", None, None, None, None)
 
         self._text = markdown.unparse(draft.message, draft.entities)
         self._raw_text = draft.message
@@ -65,8 +66,7 @@ class Draft:
         """
         if not self.entity and await self.get_input_entity():
             try:
-                self._entity =\
-                    await self._client.get_entity(self._input_entity)
+                self._entity = await self._client.get_entity(self._input_entity)
             except ValueError:
                 pass
 
@@ -104,8 +104,8 @@ class Draft:
         return not self._text
 
     async def set_message(
-            self, text=None, reply_to=0, parse_mode=(),
-            link_preview=None):
+        self, text=None, reply_to=0, parse_mode=(), link_preview=None
+    ):
         """
         Changes the draft message on the Telegram servers. The changes are
         reflected in this object.
@@ -131,16 +131,17 @@ class Draft:
         if link_preview is None:
             link_preview = self.link_preview
 
-        raw_text, entities =\
-            await self._client._parse_message_text(text, parse_mode)
+        raw_text, entities = await self._client._parse_message_text(text, parse_mode)
 
-        result = await self._client(SaveDraftRequest(
-            peer=self._peer,
-            message=raw_text,
-            no_webpage=not link_preview,
-            reply_to_msg_id=reply_to,
-            entities=entities
-        ))
+        result = await self._client(
+            SaveDraftRequest(
+                peer=self._peer,
+                message=raw_text,
+                no_webpage=not link_preview,
+                reply_to_msg_id=reply_to,
+                entities=entities,
+            )
+        )
 
         if result:
             self._text = text
@@ -157,16 +158,19 @@ class Draft:
         wrapper around ``send_message(dialog.input_entity, *args, **kwargs)``.
         """
         await self._client.send_message(
-            self._peer, self.text, reply_to=self.reply_to_msg_id,
-            link_preview=self.link_preview, parse_mode=parse_mode,
-            clear_draft=clear
+            self._peer,
+            self.text,
+            reply_to=self.reply_to_msg_id,
+            link_preview=self.link_preview,
+            parse_mode=parse_mode,
+            clear_draft=clear,
         )
 
     async def delete(self):
         """
         Deletes this draft, and returns `True` on success.
         """
-        return await self.set_message(text='')
+        return await self.set_message(text="")
 
     def to_dict(self):
         try:
@@ -175,12 +179,12 @@ class Draft:
             entity = e
 
         return {
-            '_': 'Draft',
-            'text': self.text,
-            'entity': entity,
-            'date': self.date,
-            'link_preview': self.link_preview,
-            'reply_to_msg_id': self.reply_to_msg_id
+            "_": "Draft",
+            "text": self.text,
+            "entity": entity,
+            "date": self.date,
+            "link_preview": self.link_preview,
+            "reply_to_msg_id": self.reply_to_msg_id,
         }
 
     def __str__(self):

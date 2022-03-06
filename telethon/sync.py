@@ -19,8 +19,14 @@ from .client.account import _TakeoutClient
 from .client.telegramclient import TelegramClient
 from .tl import types, functions, custom
 from .tl.custom import (
-    Draft, Dialog, MessageButton, Forward, Button,
-    Message, InlineResult, Conversation
+    Draft,
+    Dialog,
+    MessageButton,
+    Forward,
+    Button,
+    Message,
+    InlineResult,
+    Conversation,
 )
 from .tl.custom.chatgetter import ChatGetter
 from .tl.custom.sendergetter import SenderGetter
@@ -33,13 +39,10 @@ def _syncify_wrap(t, method_name):
     def syncified(*args, **kwargs):
         coro = method(*args, **kwargs)
         loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return coro
-        else:
-            return loop.run_until_complete(coro)
+        return coro if loop.is_running() else loop.run_until_complete(coro)
 
     # Save an accessible reference to the original method
-    setattr(syncified, '__tl.sync', method)
+    setattr(syncified, "__tl.sync", method)
     setattr(t, method_name, syncified)
 
 
@@ -54,21 +57,39 @@ def syncify(*types):
     # about asyncgenfunction's here.
     for t in types:
         for name in dir(t):
-            if not name.startswith('_') or name == '__call__':
-                if inspect.iscoroutinefunction(getattr(t, name)):
-                    _syncify_wrap(t, name)
+            if (
+                not name.startswith("_") or name == "__call__"
+            ) and inspect.iscoroutinefunction(getattr(t, name)):
+                _syncify_wrap(t, name)
 
 
-syncify(TelegramClient, _TakeoutClient, Draft, Dialog, MessageButton,
-        ChatGetter, SenderGetter, Forward, Message, InlineResult, Conversation)
+syncify(
+    TelegramClient,
+    _TakeoutClient,
+    Draft,
+    Dialog,
+    MessageButton,
+    ChatGetter,
+    SenderGetter,
+    Forward,
+    Message,
+    InlineResult,
+    Conversation,
+)
 
 
 # Private special case, since a conversation's methods return
 # futures (but the public function themselves are synchronous).
-_syncify_wrap(Conversation, '_get_result')
+_syncify_wrap(Conversation, "_get_result")
 
 __all__ = [
-    'TelegramClient', 'Button',
-    'types', 'functions', 'custom', 'errors',
-    'events', 'utils', 'connection'
+    "TelegramClient",
+    "Button",
+    "types",
+    "functions",
+    "custom",
+    "errors",
+    "events",
+    "utils",
+    "connection",
 ]
