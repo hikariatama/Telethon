@@ -47,17 +47,15 @@ class _MessagesIter(RequestIter):
         # and simply stopping once we hit a message with ID <= min_id.
         if self.reverse:
             offset_id = max(offset_id, min_id)
-            if offset_id and max_id:
-                if max_id - offset_id <= 1:
-                    raise StopAsyncIteration
+            if offset_id and max_id and max_id - offset_id <= 1:
+                raise StopAsyncIteration
 
             if not max_id:
                 max_id = float("inf")
         else:
             offset_id = max(offset_id, max_id)
-            if offset_id and min_id:
-                if offset_id - min_id <= 1:
-                    raise StopAsyncIteration
+            if offset_id and min_id and offset_id - min_id <= 1:
+                raise StopAsyncIteration
 
         if self.reverse:
             if offset_id:
@@ -245,14 +243,12 @@ class _MessagesIter(RequestIter):
         Determine whether the given message is in the range or
         it should be ignored (and avoid loading more chunks).
         """
-        # No entity means message IDs between chats may vary
         if self.entity:
             if self.reverse:
                 if message.id <= self.last_id or message.id >= self.max_id:
                     return False
-            else:
-                if message.id >= self.last_id or message.id <= self.min_id:
-                    return False
+            elif message.id >= self.last_id or message.id <= self.min_id:
+                return False
 
         return True
 
@@ -276,11 +272,7 @@ class _MessagesIter(RequestIter):
             self.request.offset_date = last_message.date
 
         if isinstance(self.request, functions.messages.SearchGlobalRequest):
-            if last_message.input_chat:
-                self.request.offset_peer = last_message.input_chat
-            else:
-                self.request.offset_peer = types.InputPeerEmpty()
-
+            self.request.offset_peer = last_message.input_chat or types.InputPeerEmpty()
             self.request.offset_rate = getattr(response, "next_rate", 0)
 
 
@@ -1214,15 +1206,14 @@ class MessageMethods:
             # Invoke `messages.editInlineBotMessage` from the right datacenter.
             # Otherwise, Telegram will error with `MESSAGE_ID_INVALID` and do nothing.
             exported = self.session.dc_id != entity.dc_id
-            if exported:
-                try:
-                    sender = await self._borrow_exported_sender(entity.dc_id)
-                    return await self._call(sender, request)
-                finally:
-                    await self._return_exported_sender(sender)
-            else:
+            if not exported:
                 return await self(request)
 
+            try:
+                sender = await self._borrow_exported_sender(entity.dc_id)
+                return await self._call(sender, request)
+            finally:
+                await self._return_exported_sender(sender)
         entity = await self.get_input_entity(entity)
         request = functions.messages.EditMessageRequest(
             peer=entity,
@@ -1234,8 +1225,7 @@ class MessageMethods:
             reply_markup=self.build_reply_markup(buttons),
             schedule_date=schedule,
         )
-        msg = self._get_response_message(request, await self(request), entity)
-        return msg
+        return self._get_response_message(request, await self(request), entity)
 
     async def delete_messages(
         self: "TelegramClient",
@@ -1376,14 +1366,15 @@ class MessageMethods:
                 await client.send_read_acknowledge(chat, messages)
         """
         if max_id is None:
-            if not message:
-                max_id = 0
-            else:
-                if utils.is_list_like(message):
-                    max_id = max(msg.id for msg in message)
-                else:
-                    max_id = message.id
+            if message:
+                max_id = (
+                    max(msg.id for msg in message)
+                    if utils.is_list_like(message)
+                    else message.id
+                )
 
+            else:
+                max_id = 0
         entity = await self.get_input_entity(entity)
         if clear_mentions:
             await self(functions.messages.ReadMentionsRequest(entity))

@@ -619,24 +619,17 @@ class MTProtoSender:
 
         This method should be used when the response isn't specific.
         """
-        state = self._pending_state.pop(msg_id, None)
-        if state:
+        if state := self._pending_state.pop(msg_id, None):
             return [state]
 
-        to_pop = [
+        if to_pop := [
             state.msg_id
             for state in self._pending_state.values()
             if state.container_id == msg_id
-        ]
-
-        if to_pop:
+        ]:
             return [self._pending_state.pop(x) for x in to_pop]
 
-        for ack in self._last_acks:
-            if ack.msg_id == msg_id:
-                return [ack]
-
-        return []
+        return next(([ack] for ack in self._last_acks if ack.msg_id == msg_id), [])
 
     async def _handle_rpc_result(self, message):
         """
@@ -729,8 +722,7 @@ class MTProtoSender:
         if self._ping == pong.ping_id:
             self._ping = None
 
-        state = self._pending_state.pop(pong.msg_id, None)
-        if state:
+        if state := self._pending_state.pop(pong.msg_id, None):
             state.future.set_result(pong)
 
     async def _handle_bad_server_salt(self, message):
@@ -854,8 +846,7 @@ class MTProtoSender:
         # TODO save these salts and automatically adjust to the
         # correct one whenever the salt in use expires.
         self._log.debug("Handling future salts for message %d", message.msg_id)
-        state = self._pending_state.pop(message.msg_id, None)
-        if state:
+        if state := self._pending_state.pop(message.msg_id, None):
             state.future.set_result(message.obj)
 
     async def _handle_state_forgotten(self, message):

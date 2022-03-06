@@ -307,9 +307,8 @@ def check_prime_and_good(prime_bytes: bytes, g: int):
         )
     )
 
-    if good_prime == prime_bytes:
-        if g in (3, 4, 5, 7):
-            return  # It's good
+    if good_prime == prime_bytes and g in {3, 4, 5, 7}:
+        return  # It's good
 
     check_prime_and_good_check(int.from_bytes(prime_bytes, "big"), g)
 

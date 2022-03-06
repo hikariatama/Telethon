@@ -78,9 +78,7 @@ def encrypt(fingerprint, data, *, use_old=False):
     # rsa module uses rsa.transform.bytes2int(to_encrypt), easier way:
     payload = int.from_bytes(to_encrypt, "big")
     encrypted = rsa.core.encrypt_int(payload, key.e, key.n)
-    # rsa module uses transform.int2bytes(encrypted, keylength), easier:
-    block = encrypted.to_bytes(256, "big")
-    return block
+    return encrypted.to_bytes(256, "big")
 
 
 # Add default keys

@@ -343,8 +343,8 @@ class InlineBuilder:
                             type = ty
                             break
 
-            if type is None:
-                type = "file"
+        if type is None:
+            type = "file"
 
         try:
             fh = utils.get_input_document(file)

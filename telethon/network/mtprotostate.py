@@ -214,9 +214,8 @@ class MTProtoState:
         Generates the next sequence number depending on whether
         it should be for a content-related query or not.
         """
-        if content_related:
-            result = self._sequence * 2 + 1
-            self._sequence += 1
-            return result
-        else:
+        if not content_related:
             return self._sequence * 2
+        result = self._sequence * 2 + 1
+        self._sequence += 1
+        return result

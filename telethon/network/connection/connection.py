@@ -78,21 +78,11 @@ class Connection(abc.ABC):
             # We do the check for numerical values here
             # to be backwards compatible with PySocks proxy format,
             # (since socks.SOCKS5 == 2, socks.SOCKS4 == 1, socks.HTTP == 3)
-            if (
-                proxy_type == ProxyType.SOCKS5
-                or proxy_type == 2
-                or proxy_type == "socks5"
-            ):
+            if proxy_type in [ProxyType.SOCKS5, 2, "socks5"]:
                 protocol = ProxyType.SOCKS5
-            elif (
-                proxy_type == ProxyType.SOCKS4
-                or proxy_type == 1
-                or proxy_type == "socks4"
-            ):
+            elif proxy_type in [ProxyType.SOCKS4, 1, "socks4"]:
                 protocol = ProxyType.SOCKS4
-            elif (
-                proxy_type == ProxyType.HTTP or proxy_type == 3 or proxy_type == "http"
-            ):
+            elif proxy_type in [ProxyType.HTTP, 3, "http"]:
                 protocol = ProxyType.HTTP
             else:
                 raise ValueError("Unknown proxy protocol type: {}".format(proxy_type))
@@ -103,11 +93,11 @@ class Connection(abc.ABC):
         else:
             from socks import SOCKS5, SOCKS4, HTTP
 
-            if proxy_type == 2 or proxy_type == "socks5":
+            if proxy_type in [2, "socks5"]:
                 protocol = SOCKS5
-            elif proxy_type == 1 or proxy_type == "socks4":
+            elif proxy_type in [1, "socks4"]:
                 protocol = SOCKS4
-            elif proxy_type == 3 or proxy_type == "http":
+            elif proxy_type in [3, "http"]:
                 protocol = HTTP
             else:
                 raise ValueError("Unknown proxy protocol type: {}".format(proxy_type))
@@ -214,21 +204,17 @@ class Connection(abc.ABC):
         return sock
 
     async def _connect(self, timeout=None, ssl=None):
-        if self._local_addr is not None:
-            # NOTE: If port is not specified, we use 0 port
-            # to notify the OS that port should be chosen randomly
-            # from the available ones.
-            if isinstance(self._local_addr, tuple) and len(self._local_addr) == 2:
-                local_addr = self._local_addr
-            elif isinstance(self._local_addr, str):
-                local_addr = (self._local_addr, 0)
-            else:
-                raise ValueError(
-                    "Unknown local address format: {}".format(self._local_addr)
-                )
-        else:
+        if self._local_addr is None:
             local_addr = None
 
+        elif isinstance(self._local_addr, tuple) and len(self._local_addr) == 2:
+            local_addr = self._local_addr
+        elif isinstance(self._local_addr, str):
+            local_addr = (self._local_addr, 0)
+        else:
+            raise ValueError(
+                "Unknown local address format: {}".format(self._local_addr)
+            )
         if not self._proxy:
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(

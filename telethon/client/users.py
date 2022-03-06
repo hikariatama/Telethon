@@ -102,7 +102,9 @@ class UserMethods:
             ) as e:
                 last_error = e
                 self._log[__name__].warning(
-                    "Telegram is having internal issues %s: %s", e.__class__.__name__, e
+                    "Telegram is having internal issues %s: %s",
+                    last_error.__class__.__name__,
+                    last_error,
                 )
 
                 await asyncio.sleep(2)
@@ -126,11 +128,10 @@ class UserMethods:
                 if e.seconds == 0:
                     e.seconds = 1
 
-                if e.seconds <= self.flood_sleep_threshold:
-                    self._log[__name__].info(*_fmt_flood(e.seconds, request))
-                    await asyncio.sleep(e.seconds)
-                else:
+                if e.seconds > self.flood_sleep_threshold:
                     raise
+                self._log[__name__].info(*_fmt_flood(e.seconds, request))
+                await asyncio.sleep(e.seconds)
             except (
                 errors.PhoneMigrateError,
                 errors.NetworkMigrateError,
