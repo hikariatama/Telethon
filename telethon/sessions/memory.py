@@ -26,7 +26,7 @@ class _SentFileType(Enum):
         elif cls == InputPhoto:
             return _SentFileType.PHOTO
         else:
-            raise ValueError("The cls must be either InputDocument/InputPhoto")
+            raise ValueError("The cls must be either InputDocument or InputPhoto")
 
 
 class MemorySession(Session):
