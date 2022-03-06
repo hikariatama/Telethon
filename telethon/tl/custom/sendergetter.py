@@ -7,6 +7,7 @@ class SenderGetter(abc.ABC):
     and `sender_id` properties and `get_sender` and `get_input_sender`
     methods.
     """
+
     def __init__(self, sender_id=None, *, sender=None, input_sender=None):
         self._sender_id = sender_id
         self._sender = sender
@@ -44,11 +45,11 @@ class SenderGetter(abc.ABC):
         # in which case we want to force fetch the entire thing because
         # the user explicitly called a method. If the user is okay with
         # cached information, they may use the property instead.
-        if (self._sender is None or getattr(self._sender, 'min', None)) \
-                and await self.get_input_sender():
+        if (
+            self._sender is None or getattr(self._sender, "min", None)
+        ) and await self.get_input_sender():
             try:
-                self._sender =\
-                    await self._client.get_entity(self._input_sender)
+                self._sender = await self._client.get_entity(self._input_sender)
             except ValueError:
                 await self._refetch_sender()
         return self._sender
@@ -66,8 +67,7 @@ class SenderGetter(abc.ABC):
         """
         if self._input_sender is None and self._sender_id and self._client:
             try:
-                self._input_sender = \
-                    self._client._entity_cache[self._sender_id]
+                self._input_sender = self._client._entity_cache[self._sender_id]
             except KeyError:
                 pass
         return self._input_sender

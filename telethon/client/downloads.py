@@ -27,12 +27,14 @@ MAX_CHUNK_SIZE = 512 * 1024
 # 2021-01-15, users reported that `errors.TimeoutError` can occur while downloading files.
 TIMED_OUT_SLEEP = 1
 
+
 class _DirectDownloadIter(RequestIter):
     async def _init(
-            self, file, dc_id, offset, stride, chunk_size, request_size, file_size, msg_data
+        self, file, dc_id, offset, stride, chunk_size, request_size, file_size, msg_data
     ):
         self.request = functions.upload.GetFileRequest(
-            file, offset=offset, limit=request_size)
+            file, offset=offset, limit=request_size
+        )
 
         self.total = file_size
         self._stride = stride
@@ -54,7 +56,8 @@ class _DirectDownloadIter(RequestIter):
                 for option in config.dc_options:
                     if option.ip_address == self.client.session.server_address:
                         self.client.session.set_dc(
-                            option.id, option.ip_address, option.port)
+                            option.id, option.ip_address, option.port
+                        )
                         self.client.session.save()
                         break
 
@@ -82,28 +85,38 @@ class _DirectDownloadIter(RequestIter):
 
         except errors.TimeoutError as e:
             if self._timed_out:
-                self.client._log[__name__].warning('Got two timeouts in a row while downloading file')
+                self.client._log[__name__].warning(
+                    "Got two timeouts in a row while downloading file"
+                )
                 raise
 
             self._timed_out = True
-            self.client._log[__name__].info('Got timeout while downloading file, retrying once')
+            self.client._log[__name__].info(
+                "Got timeout while downloading file, retrying once"
+            )
             await asyncio.sleep(TIMED_OUT_SLEEP)
             return await self._request()
 
         except errors.FileMigrateError as e:
-            self.client._log[__name__].info('File lives in another DC')
+            self.client._log[__name__].info("File lives in another DC")
             self._sender = await self.client._borrow_exported_sender(e.new_dc)
             self._exported = True
             return await self._request()
 
         except errors.FilerefUpgradeNeededError as e:
             # Only implemented for documents which are the ones that may take that long to download
-            if not self._msg_data \
-                    or not isinstance(self.request.location, types.InputDocumentFileLocation) \
-                    or self.request.location.thumb_size != '':
+            if (
+                not self._msg_data
+                or not isinstance(
+                    self.request.location, types.InputDocumentFileLocation
+                )
+                or self.request.location.thumb_size != ""
+            ):
                 raise
 
-            self.client._log[__name__].info('File ref expired during download; refetching message')
+            self.client._log[__name__].info(
+                "File ref expired during download; refetching message"
+            )
             chat, msg_id = self._msg_data
             msg = await self.client.get_messages(chat, ids=msg_id)
 
@@ -144,7 +157,7 @@ class _DirectDownloadIter(RequestIter):
 class _GenericDownloadIter(_DirectDownloadIter):
     async def _load_next_chunk(self):
         # 1. Fetch enough for one chunk
-        data = b''
+        data = b""
 
         # 1.1. ``bad`` is how much into the data we have we need to offset
         bad = self.request.offset % self.request.limit
@@ -171,7 +184,7 @@ class _GenericDownloadIter(_DirectDownloadIter):
         # 2.2. The current chunk starts at ``bad`` offset into the data,
         #      and each new chunk is ``stride`` bytes apart of the other
         for i in range(bad, len(data), self._stride):
-            self.buffer.append(mem[i:i + self._chunk_size])
+            self.buffer.append(mem[i : i + self._chunk_size])
 
             # 2.3. We will yield this offset, so move to the next one
             self.request.offset += self._stride
@@ -197,11 +210,12 @@ class DownloadMethods:
     # region Public methods
 
     async def download_profile_photo(
-            self: 'TelegramClient',
-            entity: 'hints.EntityLike',
-            file: 'hints.FileLike' = None,
-            *,
-            download_big: bool = True) -> typing.Optional[str]:
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        file: "hints.FileLike" = None,
+        *,
+        download_big: bool = True
+    ) -> typing.Optional[str]:
         """
         Downloads the profile photo from the given user, chat or channel.
 
@@ -241,9 +255,9 @@ class DownloadMethods:
         """
         # hex(crc32(x.encode('ascii'))) for x in
         # ('User', 'Chat', 'UserFull', 'ChatFull')
-        ENTITIES = (0x2da17977, 0xc5af5d94, 0x1f4661b9, 0xd49a2697)
+        ENTITIES = (0x2DA17977, 0xC5AF5D94, 0x1F4661B9, 0xD49A2697)
         # ('InputPeer', 'InputUser', 'InputChannel')
-        INPUTS = (0xc91c90b6, 0xe669bf46, 0x40f202fd)
+        INPUTS = (0xC91C90B6, 0xE669BF46, 0x40F202FD)
         if not isinstance(entity, TLObject) or entity.SUBCLASS_OF_ID in INPUTS:
             entity = await self.get_entity(entity)
 
@@ -253,18 +267,21 @@ class DownloadMethods:
         if entity.SUBCLASS_OF_ID not in ENTITIES:
             photo = entity
         else:
-            if not hasattr(entity, 'photo'):
+            if not hasattr(entity, "photo"):
                 # Special case: may be a ChatFull with photo:Photo
                 # This is different from a normal UserProfilePhoto and Chat
-                if not hasattr(entity, 'chat_photo'):
+                if not hasattr(entity, "chat_photo"):
                     return None
 
                 return await self._download_photo(
-                    entity.chat_photo, file, date=None,
-                    thumb=thumb, progress_callback=None
+                    entity.chat_photo,
+                    file,
+                    date=None,
+                    thumb=thumb,
+                    progress_callback=None,
                 )
 
-            for attr in ('username', 'first_name', 'title'):
+            for attr in ("username", "first_name", "title"):
                 possible_names.append(getattr(entity, attr, None))
 
             photo = entity.photo
@@ -274,7 +291,7 @@ class DownloadMethods:
             loc = types.InputPeerPhotoFileLocation(
                 peer=await self.get_input_entity(entity),
                 photo_id=photo.photo_id,
-                big=download_big
+                big=download_big,
             )
         else:
             # It doesn't make any sense to check if `photo` can be used
@@ -284,8 +301,7 @@ class DownloadMethods:
             return None
 
         file = self._get_proper_filename(
-            file, 'profile_photo', '.jpg',
-            possible_names=possible_names
+            file, "profile_photo", ".jpg", possible_names=possible_names
         )
 
         try:
@@ -299,21 +315,24 @@ class DownloadMethods:
             if ty == helpers._EntityType.CHANNEL:
                 full = await self(functions.channels.GetFullChannelRequest(ie))
                 return await self._download_photo(
-                    full.full_chat.chat_photo, file,
-                    date=None, progress_callback=None,
-                    thumb=thumb
+                    full.full_chat.chat_photo,
+                    file,
+                    date=None,
+                    progress_callback=None,
+                    thumb=thumb,
                 )
             else:
                 # Until there's a report for chats, no need to.
                 return None
 
     async def download_media(
-            self: 'TelegramClient',
-            message: 'hints.MessageLike',
-            file: 'hints.FileLike' = None,
-            *,
-            thumb: 'typing.Union[int, types.TypePhotoSize]' = None,
-            progress_callback: 'hints.ProgressCallback' = None) -> typing.Optional[typing.Union[str, bytes]]:
+        self: "TelegramClient",
+        message: "hints.MessageLike",
+        file: "hints.FileLike" = None,
+        *,
+        thumb: "typing.Union[int, types.TypePhotoSize]" = None,
+        progress_callback: "hints.ProgressCallback" = None
+    ) -> typing.Optional[typing.Union[str, bytes]]:
         """
         Downloads the given media from a message object.
 
@@ -399,10 +418,9 @@ class DownloadMethods:
             media = utils.resolve_bot_file_id(media)
 
         if isinstance(media, types.MessageService):
-            if isinstance(message.action,
-                          types.MessageActionChatEditPhoto):
+            if isinstance(message.action, types.MessageActionChatEditPhoto):
                 media = media.photo
-       
+
         if isinstance(media, types.MessageMediaWebPage):
             if isinstance(media.webpage, types.WebPage):
                 media = media.webpage.document or media.webpage.photo
@@ -416,25 +434,25 @@ class DownloadMethods:
                 media, file, date, thumb, progress_callback, msg_data
             )
         elif isinstance(media, types.MessageMediaContact) and thumb is None:
-            return self._download_contact(
-                media, file
-            )
-        elif isinstance(media, (types.WebDocument, types.WebDocumentNoProxy)) and thumb is None:
-            return await self._download_web_document(
-                media, file, progress_callback
-            )
+            return self._download_contact(media, file)
+        elif (
+            isinstance(media, (types.WebDocument, types.WebDocumentNoProxy))
+            and thumb is None
+        ):
+            return await self._download_web_document(media, file, progress_callback)
 
     async def download_file(
-            self: 'TelegramClient',
-            input_location: 'hints.FileLike',
-            file: 'hints.OutFileLike' = None,
-            *,
-            part_size_kb: float = None,
-            file_size: int = None,
-            progress_callback: 'hints.ProgressCallback' = None,
-            dc_id: int = None,
-            key: bytes = None,
-            iv: bytes = None) -> typing.Optional[bytes]:
+        self: "TelegramClient",
+        input_location: "hints.FileLike",
+        file: "hints.OutFileLike" = None,
+        *,
+        part_size_kb: float = None,
+        file_size: int = None,
+        progress_callback: "hints.ProgressCallback" = None,
+        dc_id: int = None,
+        key: bytes = None,
+        iv: bytes = None
+    ) -> typing.Optional[bytes]:
         """
         Low-level method to download files from their input location.
 
@@ -499,17 +517,18 @@ class DownloadMethods:
         )
 
     async def _download_file(
-            self: 'TelegramClient',
-            input_location: 'hints.FileLike',
-            file: 'hints.OutFileLike' = None,
-            *,
-            part_size_kb: float = None,
-            file_size: int = None,
-            progress_callback: 'hints.ProgressCallback' = None,
-            dc_id: int = None,
-            key: bytes = None,
-            iv: bytes = None,
-            msg_data: tuple = None) -> typing.Optional[bytes]:
+        self: "TelegramClient",
+        input_location: "hints.FileLike",
+        file: "hints.OutFileLike" = None,
+        *,
+        part_size_kb: float = None,
+        file_size: int = None,
+        progress_callback: "hints.ProgressCallback" = None,
+        dc_id: int = None,
+        key: bytes = None,
+        iv: bytes = None,
+        msg_data: tuple = None
+    ) -> typing.Optional[bytes]:
         if not part_size_kb:
             if not file_size:
                 part_size_kb = 64  # Reasonable default
@@ -518,8 +537,7 @@ class DownloadMethods:
 
         part_size = int(part_size_kb * 1024)
         if part_size % MIN_CHUNK_SIZE != 0:
-            raise ValueError(
-                'The part size must be evenly divisible by 4096.')
+            raise ValueError("The part size must be evenly divisible by 4096.")
 
         if isinstance(file, pathlib.Path):
             file = str(file.absolute())
@@ -530,13 +548,14 @@ class DownloadMethods:
         elif isinstance(file, str):
             # Ensure that we'll be able to download the media
             helpers.ensure_parent_dir_exists(file)
-            f = open(file, 'wb')
+            f = open(file, "wb")
         else:
             f = file
 
         try:
             async for chunk in self._iter_download(
-                    input_location, request_size=part_size, dc_id=dc_id, msg_data=msg_data):
+                input_location, request_size=part_size, dc_id=dc_id, msg_data=msg_data
+            ):
                 if iv and key:
                     chunk = AES.decrypt_ige(chunk, key, iv)
                 r = f.write(chunk)
@@ -549,7 +568,7 @@ class DownloadMethods:
                         await r
 
             # Not all IO objects have flush (see #1227)
-            if callable(getattr(f, 'flush', None)):
+            if callable(getattr(f, "flush", None)):
                 f.flush()
 
             if in_memory:
@@ -559,16 +578,16 @@ class DownloadMethods:
                 f.close()
 
     def iter_download(
-            self: 'TelegramClient',
-            file: 'hints.FileLike',
-            *,
-            offset: int = 0,
-            stride: int = None,
-            limit: int = None,
-            chunk_size: int = None,
-            request_size: int = MAX_CHUNK_SIZE,
-            file_size: int = None,
-            dc_id: int = None
+        self: "TelegramClient",
+        file: "hints.FileLike",
+        *,
+        offset: int = 0,
+        stride: int = None,
+        limit: int = None,
+        chunk_size: int = None,
+        request_size: int = MAX_CHUNK_SIZE,
+        file_size: int = None,
+        dc_id: int = None
     ):
         """
         Iterates over a file download, yielding chunks of the file.
@@ -665,17 +684,17 @@ class DownloadMethods:
         )
 
     def _iter_download(
-            self: 'TelegramClient',
-            file: 'hints.FileLike',
-            *,
-            offset: int = 0,
-            stride: int = None,
-            limit: int = None,
-            chunk_size: int = None,
-            request_size: int = MAX_CHUNK_SIZE,
-            file_size: int = None,
-            dc_id: int = None,
-            msg_data: tuple = None
+        self: "TelegramClient",
+        file: "hints.FileLike",
+        *,
+        offset: int = 0,
+        stride: int = None,
+        limit: int = None,
+        chunk_size: int = None,
+        request_size: int = MAX_CHUNK_SIZE,
+        file_size: int = None,
+        dc_id: int = None,
+        msg_data: tuple = None
     ):
         info = utils._get_file_info(file)
         if info.dc_id is not None:
@@ -695,7 +714,7 @@ class DownloadMethods:
         if stride is None:
             stride = chunk_size
         elif stride < chunk_size:
-            raise ValueError('stride must be >= chunk_size')
+            raise ValueError("stride must be >= chunk_size")
 
         request_size -= request_size % MIN_CHUNK_SIZE
         if request_size < MIN_CHUNK_SIZE:
@@ -703,17 +722,27 @@ class DownloadMethods:
         elif request_size > MAX_CHUNK_SIZE:
             request_size = MAX_CHUNK_SIZE
 
-        if chunk_size == request_size \
-                and offset % MIN_CHUNK_SIZE == 0 \
-                and stride % MIN_CHUNK_SIZE == 0 \
-                and (limit is None or offset % limit == 0):
+        if (
+            chunk_size == request_size
+            and offset % MIN_CHUNK_SIZE == 0
+            and stride % MIN_CHUNK_SIZE == 0
+            and (limit is None or offset % limit == 0)
+        ):
             cls = _DirectDownloadIter
-            self._log[__name__].info('Starting direct file download in chunks of '
-                                     '%d at %d, stride %d', request_size, offset, stride)
+            self._log[__name__].info(
+                "Starting direct file download in chunks of " "%d at %d, stride %d",
+                request_size,
+                offset,
+                stride,
+            )
         else:
             cls = _GenericDownloadIter
-            self._log[__name__].info('Starting indirect file download in chunks of '
-                                     '%d at %d, stride %d', request_size, offset, stride)
+            self._log[__name__].info(
+                "Starting indirect file download in chunks of " "%d at %d, stride %d",
+                request_size,
+                offset,
+                stride,
+            )
 
         return cls(
             self,
@@ -767,13 +796,20 @@ class DownloadMethods:
             return thumbs[thumb]
         elif isinstance(thumb, str):
             return next((t for t in thumbs if t.type == thumb), None)
-        elif isinstance(thumb, (types.PhotoSize, types.PhotoCachedSize,
-                                types.PhotoStrippedSize, types.VideoSize)):
+        elif isinstance(
+            thumb,
+            (
+                types.PhotoSize,
+                types.PhotoCachedSize,
+                types.PhotoStrippedSize,
+                types.VideoSize,
+            ),
+        ):
             return thumb
         else:
             return None
 
-    def _download_cached_photo_size(self: 'TelegramClient', size, file):
+    def _download_cached_photo_size(self: "TelegramClient", size, file):
         # No need to download anything, simply write the bytes
         if isinstance(size, types.PhotoStrippedSize):
             data = utils.stripped_photo_to_jpg(size.bytes)
@@ -784,7 +820,7 @@ class DownloadMethods:
             return data
         elif isinstance(file, str):
             helpers.ensure_parent_dir_exists(file)
-            f = open(file, 'wb')
+            f = open(file, "wb")
         else:
             f = file
 
@@ -795,7 +831,9 @@ class DownloadMethods:
                 f.close()
         return file
 
-    async def _download_photo(self: 'TelegramClient', photo, file, date, thumb, progress_callback):
+    async def _download_photo(
+        self: "TelegramClient", photo, file, date, thumb, progress_callback
+    ):
         """Specialized version of .download_media() for photos"""
         # Determine the photo and its largest size
         if isinstance(photo, types.MessageMediaPhoto):
@@ -809,9 +847,9 @@ class DownloadMethods:
             return
 
         if isinstance(size, types.VideoSize):
-            file = self._get_proper_filename(file, 'video', '.mp4', date=date)
+            file = self._get_proper_filename(file, "video", ".mp4", date=date)
         else:
-            file = self._get_proper_filename(file, 'photo', '.jpg', date=date)
+            file = self._get_proper_filename(file, "photo", ".jpg", date=date)
 
         if isinstance(size, (types.PhotoCachedSize, types.PhotoStrippedSize)):
             return self._download_cached_photo_size(size, file)
@@ -826,40 +864,39 @@ class DownloadMethods:
                 id=photo.id,
                 access_hash=photo.access_hash,
                 file_reference=photo.file_reference,
-                thumb_size=size.type
+                thumb_size=size.type,
             ),
             file,
             file_size=file_size,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
         )
         return result if file is bytes else file
 
     @staticmethod
     def _get_kind_and_names(attributes):
         """Gets kind and possible names for :tl:`DocumentAttribute`."""
-        kind = 'document'
+        kind = "document"
         possible_names = []
         for attr in attributes:
             if isinstance(attr, types.DocumentAttributeFilename):
                 possible_names.insert(0, attr.file_name)
 
             elif isinstance(attr, types.DocumentAttributeAudio):
-                kind = 'audio'
+                kind = "audio"
                 if attr.performer and attr.title:
-                    possible_names.append('{} - {}'.format(
-                        attr.performer, attr.title
-                    ))
+                    possible_names.append("{} - {}".format(attr.performer, attr.title))
                 elif attr.performer:
                     possible_names.append(attr.performer)
                 elif attr.title:
                     possible_names.append(attr.title)
                 elif attr.voice:
-                    kind = 'voice'
+                    kind = "voice"
 
         return kind, possible_names
 
     async def _download_document(
-            self, document, file, date, thumb, progress_callback, msg_data):
+        self, document, file, date, thumb, progress_callback, msg_data
+    ):
         """Specialized version of .download_media() for documents."""
         if isinstance(document, types.MessageMediaDocument):
             document = document.document
@@ -869,12 +906,15 @@ class DownloadMethods:
         if thumb is None:
             kind, possible_names = self._get_kind_and_names(document.attributes)
             file = self._get_proper_filename(
-                file, kind, utils.get_extension(document),
-                date=date, possible_names=possible_names
+                file,
+                kind,
+                utils.get_extension(document),
+                date=date,
+                possible_names=possible_names,
             )
             size = None
         else:
-            file = self._get_proper_filename(file, 'photo', '.jpg', date=date)
+            file = self._get_proper_filename(file, "photo", ".jpg", date=date)
             size = self._get_thumb(document.thumbs, thumb)
             if isinstance(size, (types.PhotoCachedSize, types.PhotoStrippedSize)):
                 return self._download_cached_photo_size(size, file)
@@ -884,7 +924,7 @@ class DownloadMethods:
                 id=document.id,
                 access_hash=document.access_hash,
                 file_reference=document.file_reference,
-                thumb_size=size.type if size else ''
+                thumb_size=size.type if size else "",
             ),
             file,
             file_size=size.size if size else document.size,
@@ -905,25 +945,31 @@ class DownloadMethods:
         phone_number = mm_contact.phone_number
 
         # Remove these pesky characters
-        first_name = first_name.replace(';', '')
-        last_name = (last_name or '').replace(';', '')
+        first_name = first_name.replace(";", "")
+        last_name = (last_name or "").replace(";", "")
         result = (
-            'BEGIN:VCARD\n'
-            'VERSION:4.0\n'
-            'N:{f};{l};;;\n'
-            'FN:{f} {l}\n'
-            'TEL;TYPE=cell;VALUE=uri:tel:+{p}\n'
-            'END:VCARD\n'
-        ).format(f=first_name, l=last_name, p=phone_number).encode('utf-8')
+            (
+                "BEGIN:VCARD\n"
+                "VERSION:4.0\n"
+                "N:{f};{l};;;\n"
+                "FN:{f} {l}\n"
+                "TEL;TYPE=cell;VALUE=uri:tel:+{p}\n"
+                "END:VCARD\n"
+            )
+            .format(f=first_name, l=last_name, p=phone_number)
+            .encode("utf-8")
+        )
 
         if file is bytes:
             return result
         elif isinstance(file, str):
             file = cls._get_proper_filename(
-                file, 'contact', '.vcard',
-                possible_names=[first_name, phone_number, last_name]
+                file,
+                "contact",
+                ".vcard",
+                possible_names=[first_name, phone_number, last_name],
             )
-            f = open(file, 'wb')
+            f = open(file, "wb")
         else:
             f = file
 
@@ -943,8 +989,8 @@ class DownloadMethods:
         """
         if not aiohttp:
             raise ValueError(
-                'Cannot download web documents without the aiohttp '
-                'dependency install it (pip install aiohttp)'
+                "Cannot download web documents without the aiohttp "
+                "dependency install it (pip install aiohttp)"
             )
 
         # TODO Better way to get opened handles of files and auto-close
@@ -954,10 +1000,9 @@ class DownloadMethods:
         elif isinstance(file, str):
             kind, possible_names = cls._get_kind_and_names(web.attributes)
             file = cls._get_proper_filename(
-                file, kind, utils.get_extension(web),
-                possible_names=possible_names
+                file, kind, utils.get_extension(web), possible_names=possible_names
             )
-            f = open(file, 'wb')
+            f = open(file, "wb")
         else:
             f = file
 
@@ -978,20 +1023,19 @@ class DownloadMethods:
         return f.getvalue() if in_memory else file
 
     @staticmethod
-    def _get_proper_filename(file, kind, extension,
-                             date=None, possible_names=None):
+    def _get_proper_filename(file, kind, extension, date=None, possible_names=None):
         """Gets a proper filename for 'file', if this is a path.
 
-           'kind' should be the kind of the output file (photo, document...)
-           'extension' should be the extension to be added to the file if
-                       the filename doesn't have any yet
-           'date' should be when this file was originally sent, if known
-           'possible_names' should be an ordered list of possible names
+        'kind' should be the kind of the output file (photo, document...)
+        'extension' should be the extension to be added to the file if
+                    the filename doesn't have any yet
+        'date' should be when this file was originally sent, if known
+        'possible_names' should be an ordered list of possible names
 
-           If no modification is made to the path, any existing file
-           will be overwritten.
-           If any modification is made to the path, this method will
-           ensure that no existing file will be overwritten.
+        If no modification is made to the path, any existing file
+        will be overwritten.
+        If any modification is made to the path, this method will
+        ensure that no existing file will be overwritten.
         """
         if isinstance(file, pathlib.Path):
             file = str(file.absolute())
@@ -1001,15 +1045,17 @@ class DownloadMethods:
             return file
 
         if file is None:
-            file = ''
+            file = ""
         elif os.path.isfile(file):
             # Make no modifications to valid existing paths
             return file
 
         if os.path.isdir(file) or not file:
             try:
-                name = None if possible_names is None else next(
-                    x for x in possible_names if x
+                name = (
+                    None
+                    if possible_names is None
+                    else next(x for x in possible_names if x)
                 )
             except StopIteration:
                 name = None
@@ -1017,10 +1063,14 @@ class DownloadMethods:
             if not name:
                 if not date:
                     date = datetime.datetime.now()
-                name = '{}_{}-{:02}-{:02}_{:02}-{:02}-{:02}'.format(
+                name = "{}_{}-{:02}-{:02}_{:02}-{:02}-{:02}".format(
                     kind,
-                    date.year, date.month, date.day,
-                    date.hour, date.minute, date.second,
+                    date.year,
+                    date.month,
+                    date.day,
+                    date.hour,
+                    date.minute,
+                    date.second,
                 )
             file = os.path.join(file, name)
 
@@ -1035,7 +1085,7 @@ class DownloadMethods:
 
         i = 1
         while True:
-            result = os.path.join(directory, '{} ({}){}'.format(name, i, ext))
+            result = os.path.join(directory, "{} ({}){}".format(name, i, ext))
             if not os.path.isfile(result):
                 return result
             i += 1

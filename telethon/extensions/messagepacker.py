@@ -41,16 +41,14 @@ class MessagePacker:
     def append(self, state):
         if not check(state):
             raise NotImplementedError()
-        else:
-            self._deque.append(state)
-            self._ready.set()
+        self._deque.append(state)
+        self._ready.set()
 
     def extend(self, states):
         if any(not check(state) for state in states):
             raise NotImplementedError()
-        else:
-            self._deque.extend(states)
-            self._ready.set()
+        self._deque.extend(states)
+        self._ready.set()
 
     async def get(self):
         """
@@ -75,13 +73,18 @@ class MessagePacker:
 
             if size <= MessageContainer.MAXIMUM_SIZE:
                 state.msg_id = self._state.write_data_as_message(
-                    buffer, state.data, isinstance(state.request, TLRequest),
-                    after_id=state.after.msg_id if state.after else None
+                    buffer,
+                    state.data,
+                    isinstance(state.request, TLRequest),
+                    after_id=state.after.msg_id if state.after else None,
                 )
                 batch.append(state)
-                self._log.debug('Assigned msg_id = %d to %s (%x)',
-                                state.msg_id, state.request.__class__.__name__,
-                                id(state.request))
+                self._log.debug(
+                    "Assigned msg_id = %d to %s (%x)",
+                    state.msg_id,
+                    state.request.__class__.__name__,
+                    id(state.request),
+                )
                 continue
 
             if batch:
@@ -99,11 +102,11 @@ class MessagePacker:
             # and this method should never return with error, which we
             # really want to avoid.
             self._log.warning(
-                'Message payload for %s is too long (%d) and cannot be sent',
-                state.request.__class__.__name__, len(state.data)
+                "Message payload for %s is too long (%d) and cannot be sent",
+                state.request.__class__.__name__,
+                len(state.data),
             )
-            state.future.set_exception(
-                ValueError('Request payload is too big'))
+            state.future.set_exception(ValueError("Request payload is too big"))
 
             size = 0
             continue
@@ -113,9 +116,10 @@ class MessagePacker:
 
         if len(batch) > 1:
             # Inlined code to pack several messages into a container
-            data = struct.pack(
-                '<Ii', MessageContainer.CONSTRUCTOR_ID, len(batch)
-            ) + buffer.getvalue()
+            data = (
+                struct.pack("<Ii", MessageContainer.CONSTRUCTOR_ID, len(batch))
+                + buffer.getvalue()
+            )
             buffer = io.BytesIO()
             container_id = self._state.write_data_as_message(
                 buffer, data, content_related=False

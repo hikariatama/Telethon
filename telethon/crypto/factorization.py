@@ -8,6 +8,7 @@ class Factorization:
     """
     Simple module to factorize large numbers really quickly.
     """
+
     @classmethod
     def factorize(cls, pq):
         """

@@ -6,12 +6,12 @@ from .tl import types
 
 # Which updates have the following fields?
 _has_field = {
-    ('user_id', int): [],
-    ('chat_id', int): [],
-    ('channel_id', int): [],
-    ('peer', 'TypePeer'): [],
-    ('peer', 'TypeDialogPeer'): [],
-    ('message', 'TypeMessage'): [],
+    ("user_id", int): [],
+    ("chat_id", int): [],
+    ("channel_id", int): [],
+    ("peer", "TypePeer"): [],
+    ("peer", "TypeDialogPeer"): [],
+    ("message", "TypeMessage"): [],
 }
 
 # Note: We don't bother checking for some rare:
@@ -27,7 +27,7 @@ _has_field = {
 def _fill():
     for name in dir(types):
         update = getattr(types, name)
-        if getattr(update, 'SUBCLASS_OF_ID', None) == 0x9f89304e:
+        if getattr(update, "SUBCLASS_OF_ID", None) == 0x9F89304E:
             cid = update.CONSTRUCTOR_ID
             sig = inspect.signature(update.__init__)
             for param in sig.parameters.values():
@@ -40,7 +40,7 @@ def _fill():
     # in, so we must make sure we have at least an update for each field
     # which likely means we are doing it right.
     if not all(_has_field.values()):
-        raise RuntimeError('FIXME: Did the init signature or updates change?')
+        raise RuntimeError("FIXME: Did the init signature or updates change?")
 
 
 # We use a function to avoid cluttering the globals (with name/update/cid/doc)
@@ -51,6 +51,7 @@ class EntityCache:
     """
     In-memory input entity cache, defaultdict-like behaviour.
     """
+
     def add(self, entities):
         """
         Adds the given entities to the cache, if they weren't saved before.
@@ -59,9 +60,9 @@ class EntityCache:
             # Invariant: all "chats" and "users" are always iterables,
             # and "user" never is (so we wrap it inside a list).
             entities = itertools.chain(
-                getattr(entities, 'chats', []),
-                getattr(entities, 'users', []),
-                (hasattr(entities, 'user') and [entities.user]) or []
+                getattr(entities, "chats", []),
+                getattr(entities, "users", []),
+                (hasattr(entities, "user") and [entities.user]) or [],
             )
 
         for entity in entities:
@@ -82,14 +83,13 @@ class EntityCache:
             try:
                 return self.__dict__[utils.get_peer_id(item)]
             except TypeError:
-                raise KeyError('Invalid key will not have entity') from None
+                raise KeyError("Invalid key will not have entity") from None
 
         for cls in (types.PeerUser, types.PeerChat, types.PeerChannel):
-            result = self.__dict__.get(utils.get_peer_id(cls(item)))
-            if result:
+            if result := self.__dict__.get(utils.get_peer_id(cls(item))):
                 return result
 
-        raise KeyError('No cached entity for the given key')
+        raise KeyError("No cached entity for the given key")
 
     def clear(self):
         """
@@ -98,13 +98,15 @@ class EntityCache:
         self.__dict__.clear()
 
     def ensure_cached(
-            self,
-            update,
-            has_user_id=frozenset(_has_field[('user_id', int)]),
-            has_chat_id=frozenset(_has_field[('chat_id', int)]),
-            has_channel_id=frozenset(_has_field[('channel_id', int)]),
-            has_peer=frozenset(_has_field[('peer', 'TypePeer')] + _has_field[('peer', 'TypeDialogPeer')]),
-            has_message=frozenset(_has_field[('message', 'TypeMessage')])
+        self,
+        update,
+        has_user_id=frozenset(_has_field[("user_id", int)]),
+        has_chat_id=frozenset(_has_field[("chat_id", int)]),
+        has_channel_id=frozenset(_has_field[("channel_id", int)]),
+        has_peer=frozenset(
+            _has_field[("peer", "TypePeer")] + _has_field[("peer", "TypeDialogPeer")]
+        ),
+        has_message=frozenset(_has_field[("message", "TypeMessage")]),
     ):
         """
         Ensures that all the relevant entities in the given update are cached.
@@ -115,29 +117,31 @@ class EntityCache:
         # in sets inside the arguments, and using local variables.
         dct = self.__dict__
         cid = update.CONSTRUCTOR_ID
-        if cid in has_user_id and \
-                update.user_id not in dct:
+        if cid in has_user_id and update.user_id not in dct:
             return False
 
-        if cid in has_chat_id and \
-                utils.get_peer_id(types.PeerChat(update.chat_id)) not in dct:
+        if (
+            cid in has_chat_id
+            and utils.get_peer_id(types.PeerChat(update.chat_id)) not in dct
+        ):
             return False
 
-        if cid in has_channel_id and \
-                utils.get_peer_id(types.PeerChannel(update.channel_id)) not in dct:
+        if (
+            cid in has_channel_id
+            and utils.get_peer_id(types.PeerChannel(update.channel_id)) not in dct
+        ):
             return False
 
-        if cid in has_peer and \
-                utils.get_peer_id(update.peer) not in dct:
+        if cid in has_peer and utils.get_peer_id(update.peer) not in dct:
             return False
 
         if cid in has_message:
             x = update.message
-            y = getattr(x, 'peer_id', None)  # handle MessageEmpty
+            y = getattr(x, "peer_id", None)  # handle MessageEmpty
             if y and utils.get_peer_id(y) not in dct:
                 return False
 
-            y = getattr(x, 'from_id', None)
+            y = getattr(x, "from_id", None)
             if y and utils.get_peer_id(y) not in dct:
                 return False
 

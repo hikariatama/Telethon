@@ -9,7 +9,7 @@ from ..errors import MultiError, RPCError
 from ..helpers import retry_range
 from ..tl import TLRequest, types, functions
 
-_NOT_A_REQUEST = lambda: TypeError('You can only invoke requests, not types!')
+_NOT_A_REQUEST = lambda: TypeError("You can only invoke requests, not types!")
 
 if typing.TYPE_CHECKING:
     from .telegramclient import TelegramClient
@@ -17,22 +17,30 @@ if typing.TYPE_CHECKING:
 
 def _fmt_flood(delay, request, *, early=False, td=datetime.timedelta):
     return (
-        'Sleeping%s for %ds (%s) on %s flood wait',
-        ' early' if early else '',
+        "Sleeping%s for %ds (%s) on %s flood wait",
+        " early" if early else "",
         delay,
         td(seconds=delay),
-        request.__class__.__name__
+        request.__class__.__name__,
     )
 
 
 class UserMethods:
-    async def __call__(self: 'TelegramClient', request, ordered=False, flood_sleep_threshold=None):
+    async def __call__(
+        self: "TelegramClient", request, ordered=False, flood_sleep_threshold=None
+    ):
         return await self._call(self._sender, request, ordered=ordered)
 
-    async def _call(self: 'TelegramClient', sender, request, ordered=False, flood_sleep_threshold=None):
+    async def _call(
+        self: "TelegramClient",
+        sender,
+        request,
+        ordered=False,
+        flood_sleep_threshold=None,
+    ):
         if flood_sleep_threshold is None:
             flood_sleep_threshold = self.flood_sleep_threshold
-        requests = (request if utils.is_list_like(request) else (request,))
+        requests = request if utils.is_list_like(request) else (request,)
         for r in requests:
             if not isinstance(r, TLRequest):
                 raise _NOT_A_REQUEST()
@@ -85,24 +93,33 @@ class UserMethods:
                     self.session.process_entities(result)
                     self._entity_cache.add(result)
                     return result
-            except (errors.ServerError, errors.RpcCallFailError,
-                    errors.RpcMcgetFailError, errors.InterdcCallErrorError,
-                    errors.InterdcCallRichErrorError) as e:
+            except (
+                errors.ServerError,
+                errors.RpcCallFailError,
+                errors.RpcMcgetFailError,
+                errors.InterdcCallErrorError,
+                errors.InterdcCallRichErrorError,
+            ) as e:
                 last_error = e
                 self._log[__name__].warning(
-                    'Telegram is having internal issues %s: %s',
-                    e.__class__.__name__, e)
+                    "Telegram is having internal issues %s: %s", e.__class__.__name__, e
+                )
 
                 await asyncio.sleep(2)
-            except (errors.FloodWaitError, errors.SlowModeWaitError, errors.FloodTestPhoneWaitError) as e:
+            except (
+                errors.FloodWaitError,
+                errors.SlowModeWaitError,
+                errors.FloodTestPhoneWaitError,
+            ) as e:
                 last_error = e
                 if utils.is_list_like(request):
                     request = request[request_index]
 
                 # SLOW_MODE_WAIT is chat-specific, not request-specific
                 if not isinstance(e, errors.SlowModeWaitError):
-                    self._flood_waited_requests\
-                        [request.CONSTRUCTOR_ID] = time.time() + e.seconds
+                    self._flood_waited_requests[request.CONSTRUCTOR_ID] = (
+                        time.time() + e.seconds
+                    )
 
                 # In test servers, FLOOD_WAIT_0 has been observed, and sleeping for
                 # such a short amount will cause retries very fast leading to issues.
@@ -114,26 +131,29 @@ class UserMethods:
                     await asyncio.sleep(e.seconds)
                 else:
                     raise
-            except (errors.PhoneMigrateError, errors.NetworkMigrateError,
-                    errors.UserMigrateError) as e:
+            except (
+                errors.PhoneMigrateError,
+                errors.NetworkMigrateError,
+                errors.UserMigrateError,
+            ) as e:
                 last_error = e
-                self._log[__name__].info('Phone migrated to %d', e.new_dc)
-                should_raise = isinstance(e, (
-                    errors.PhoneMigrateError, errors.NetworkMigrateError
-                ))
+                self._log[__name__].info("Phone migrated to %d", e.new_dc)
+                should_raise = isinstance(
+                    e, (errors.PhoneMigrateError, errors.NetworkMigrateError)
+                )
                 if should_raise and await self.is_user_authorized():
                     raise
                 await self._switch_dc(e.new_dc)
 
         if self._raise_last_call_error and last_error is not None:
             raise last_error
-        raise ValueError('Request was unsuccessful {} time(s)'
-                         .format(attempt))
+        raise ValueError("Request was unsuccessful {} time(s)".format(attempt))
 
     # region Public methods
 
-    async def get_me(self: 'TelegramClient', input_peer: bool = False) \
-            -> 'typing.Union[types.User, types.InputPeerUser]':
+    async def get_me(
+        self: "TelegramClient", input_peer: bool = False
+    ) -> "typing.Union[types.User, types.InputPeerUser]":
         """
         Gets "me", the current :tl:`User` who is logged in.
 
@@ -158,21 +178,20 @@ class UserMethods:
             return self._self_input_peer
 
         try:
-            me = (await self(
-                functions.users.GetUsersRequest([types.InputUserSelf()])))[0]
+            me = (await self(functions.users.GetUsersRequest([types.InputUserSelf()])))[
+                0
+            ]
 
             self._bot = me.bot
             if not self._self_input_peer:
-                self._self_input_peer = utils.get_input_peer(
-                    me, allow_self=False
-                )
+                self._self_input_peer = utils.get_input_peer(me, allow_self=False)
 
             return self._self_input_peer if input_peer else me
         except errors.UnauthorizedError:
             return None
 
     @property
-    def _self_id(self: 'TelegramClient') -> typing.Optional[int]:
+    def _self_id(self: "TelegramClient") -> typing.Optional[int]:
         """
         Returns the ID of the logged-in user, if known.
 
@@ -181,7 +200,7 @@ class UserMethods:
         """
         return self._self_input_peer.user_id if self._self_input_peer else None
 
-    async def is_bot(self: 'TelegramClient') -> bool:
+    async def is_bot(self: "TelegramClient") -> bool:
         """
         Return `True` if the signed-in user is a bot, `False` otherwise.
 
@@ -198,7 +217,7 @@ class UserMethods:
 
         return self._bot
 
-    async def is_user_authorized(self: 'TelegramClient') -> bool:
+    async def is_user_authorized(self: "TelegramClient") -> bool:
         """
         Returns `True` if the user is authorized (logged in).
 
@@ -221,8 +240,8 @@ class UserMethods:
         return self._authorized
 
     async def get_entity(
-            self: 'TelegramClient',
-            entity: 'hints.EntitiesLike') -> 'hints.Entity':
+        self: "TelegramClient", entity: "hints.EntitiesLike"
+    ) -> "hints.Entity":
         """
         Turns the given entity into a valid Telegram :tl:`User`, :tl:`Chat`
         or :tl:`Channel`. You can also pass a list or iterable of entities,
@@ -313,16 +332,19 @@ class UserMethods:
                 tmp.extend(await self(functions.users.GetUsersRequest(curr)))
             users = tmp
         if chats:  # TODO Handle chats slice?
-            chats = (await self(
-                functions.messages.GetChatsRequest([x.chat_id for x in chats]))).chats
+            chats = (
+                await self(
+                    functions.messages.GetChatsRequest([x.chat_id for x in chats])
+                )
+            ).chats
         if channels:
-            channels = (await self(
-                functions.channels.GetChannelsRequest(channels))).chats
+            channels = (
+                await self(functions.channels.GetChannelsRequest(channels))
+            ).chats
 
         # Merge users, chats and channels into a single dictionary
         id_entity = {
-            utils.get_peer_id(x): x
-            for x in itertools.chain(users, chats, channels)
+            utils.get_peer_id(x): x for x in itertools.chain(users, chats, channels)
         }
 
         # We could check saved usernames and put them into the users,
@@ -336,16 +358,19 @@ class UserMethods:
             elif not isinstance(x, types.InputPeerSelf):
                 result.append(id_entity[utils.get_peer_id(x)])
             else:
-                result.append(next(
-                    u for u in id_entity.values()
-                    if isinstance(u, types.User) and u.is_self
-                ))
+                result.append(
+                    next(
+                        u
+                        for u in id_entity.values()
+                        if isinstance(u, types.User) and u.is_self
+                    )
+                )
 
         return result[0] if single else result
 
     async def get_input_entity(
-            self: 'TelegramClient',
-            peer: 'hints.EntityLike') -> 'types.TypeInputPeer':
+        self: "TelegramClient", peer: "hints.EntityLike"
+    ) -> "types.TypeInputPeer":
         """
         Turns the given entity into its input entity version.
 
@@ -416,13 +441,13 @@ class UserMethods:
         # Next in priority is having a peer (or its ID) cached in-memory
         try:
             # 0x2d45687 == crc32(b'Peer')
-            if isinstance(peer, int) or peer.SUBCLASS_OF_ID == 0x2d45687:
+            if isinstance(peer, int) or peer.SUBCLASS_OF_ID == 0x2D45687:
                 return self._entity_cache[peer]
         except (AttributeError, KeyError):
             pass
 
         # Then come known strings that take precedence
-        if peer in ('me', 'self'):
+        if peer in ("me", "self"):
             return types.InputPeerSelf()
 
         # No InputPeer, cached peer, or known string. Fetch from disk cache
@@ -433,8 +458,7 @@ class UserMethods:
 
         # Only network left to try
         if isinstance(peer, str):
-            return utils.get_input_peer(
-                await self._get_entity_from_string(peer))
+            return utils.get_input_peer(await self._get_entity_from_string(peer))
 
         # If we're a bot and the user has messaged us privately users.getUsers
         # will work with access_hash = 0. Similar for channels.getChannels.
@@ -442,8 +466,11 @@ class UserMethods:
         # regardless. These are the only two special-cased requests.
         peer = utils.get_peer(peer)
         if isinstance(peer, types.PeerUser):
-            users = await self(functions.users.GetUsersRequest([
-                types.InputUser(peer.user_id, access_hash=0)]))
+            users = await self(
+                functions.users.GetUsersRequest(
+                    [types.InputUser(peer.user_id, access_hash=0)]
+                )
+            )
             if users and not isinstance(users[0], types.UserEmpty):
                 # If the user passed a valid ID they expect to work for
                 # channels but would be valid for users, we get UserEmpty.
@@ -457,27 +484,28 @@ class UserMethods:
             return types.InputPeerChat(peer.chat_id)
         elif isinstance(peer, types.PeerChannel):
             try:
-                channels = await self(functions.channels.GetChannelsRequest([
-                    types.InputChannel(peer.channel_id, access_hash=0)]))
+                channels = await self(
+                    functions.channels.GetChannelsRequest(
+                        [types.InputChannel(peer.channel_id, access_hash=0)]
+                    )
+                )
                 return utils.get_input_peer(channels.chats[0])
             except errors.ChannelInvalidError:
                 pass
 
         raise ValueError(
-            'Could not find the input entity for {} ({}). Please read https://'
-            'docs.telethon.dev/en/latest/concepts/entities.html to'
-            ' find out more details.'
-            .format(peer, type(peer).__name__)
+            "Could not find the input entity for {} ({}). Please read https://"
+            "docs.telethon.dev/en/latest/concepts/entities.html to"
+            " find out more details.".format(peer, type(peer).__name__)
         )
 
-    async def _get_peer(self: 'TelegramClient', peer: 'hints.EntityLike'):
+    async def _get_peer(self: "TelegramClient", peer: "hints.EntityLike"):
         i, cls = utils.resolve_id(await self.get_peer_id(peer))
         return cls(i)
 
     async def get_peer_id(
-            self: 'TelegramClient',
-            peer: 'hints.EntityLike',
-            add_mark: bool = True) -> int:
+        self: "TelegramClient", peer: "hints.EntityLike", add_mark: bool = True
+    ) -> int:
         """
         Gets the ID for the given entity.
 
@@ -496,7 +524,7 @@ class UserMethods:
             return utils.get_peer_id(peer, add_mark=add_mark)
 
         try:
-            if peer.SUBCLASS_OF_ID not in (0x2d45687, 0xc91c90b6):
+            if peer.SUBCLASS_OF_ID not in (0x2D45687, 0xC91C90B6):
                 # 0x2d45687, 0xc91c90b6 == crc32(b'Peer') and b'InputPeer'
                 peer = await self.get_input_entity(peer)
         except AttributeError:
@@ -511,7 +539,7 @@ class UserMethods:
 
     # region Private methods
 
-    async def _get_entity_from_string(self: 'TelegramClient', string):
+    async def _get_entity_from_string(self: "TelegramClient", string):
         """
         Gets a full entity from the given string, which may be a phone or
         a username, and processes all the found entities on the session.
@@ -526,35 +554,39 @@ class UserMethods:
         phone = utils.parse_phone(string)
         if phone:
             try:
-                for user in (await self(
-                        functions.contacts.GetContactsRequest(0))).users:
+                for user in (
+                    await self(functions.contacts.GetContactsRequest(0))
+                ).users:
                     if user.phone == phone:
                         return user
             except errors.BotMethodInvalidError:
-                raise ValueError('Cannot get entity by phone number as a '
-                                 'bot (try using integer IDs, not strings)')
-        elif string.lower() in ('me', 'self'):
+                raise ValueError(
+                    "Cannot get entity by phone number as a "
+                    "bot (try using integer IDs, not strings)"
+                )
+        elif string.lower() in ("me", "self"):
             return await self.get_me()
         else:
             username, is_join_chat = utils.parse_username(string)
             if is_join_chat:
-                invite = await self(
-                    functions.messages.CheckChatInviteRequest(username))
+                invite = await self(functions.messages.CheckChatInviteRequest(username))
 
                 if isinstance(invite, types.ChatInvite):
                     raise ValueError(
-                        'Cannot get entity from a channel (or group) '
-                        'that you are not part of. Join the group and retry'
+                        "Cannot get entity from a channel (or group) "
+                        "that you are not part of. Join the group and retry"
                     )
                 elif isinstance(invite, types.ChatInviteAlready):
                     return invite.chat
             elif username:
                 try:
                     result = await self(
-                        functions.contacts.ResolveUsernameRequest(username))
+                        functions.contacts.ResolveUsernameRequest(username)
+                    )
                 except errors.UsernameNotOccupiedError as e:
-                    raise ValueError('No user has "{}" as username'
-                                     .format(username)) from e
+                    raise ValueError(
+                        'No user has "{}" as username'.format(username)
+                    ) from e
 
                 try:
                     pid = utils.get_peer_id(result.peer, add_mark=False)
@@ -566,33 +598,30 @@ class UserMethods:
                     pass
             try:
                 # Nobody with this username, maybe it's an exact name/title
-                return await self.get_entity(
-                    self.session.get_input_entity(string))
+                return await self.get_entity(self.session.get_input_entity(string))
             except ValueError:
                 pass
 
-        raise ValueError(
-            'Cannot find any entity corresponding to "{}"'.format(string)
-        )
+        raise ValueError('Cannot find any entity corresponding to "{}"'.format(string))
 
-    async def _get_input_dialog(self: 'TelegramClient', dialog):
+    async def _get_input_dialog(self: "TelegramClient", dialog):
         """
         Returns a :tl:`InputDialogPeer`. This is a bit tricky because
         it may or not need access to the client to convert what's given
         into an input entity.
         """
         try:
-            if dialog.SUBCLASS_OF_ID == 0xa21c9795:  # crc32(b'InputDialogPeer')
+            if dialog.SUBCLASS_OF_ID == 0xA21C9795:  # crc32(b'InputDialogPeer')
                 dialog.peer = await self.get_input_entity(dialog.peer)
                 return dialog
-            elif dialog.SUBCLASS_OF_ID == 0xc91c90b6:  # crc32(b'InputPeer')
+            elif dialog.SUBCLASS_OF_ID == 0xC91C90B6:  # crc32(b'InputPeer')
                 return types.InputDialogPeer(dialog)
         except AttributeError:
             pass
 
         return types.InputDialogPeer(await self.get_input_entity(dialog))
 
-    async def _get_input_notify(self: 'TelegramClient', notify):
+    async def _get_input_notify(self: "TelegramClient", notify):
         """
         Returns a :tl:`InputNotifyPeer`. This is a bit tricky because
         it may or not need access to the client to convert what's given
