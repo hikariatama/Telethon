@@ -68,8 +68,7 @@ def _find_ssl_lib():
                     # Fix for https://github.com/LonamiWebs/Telethon/issues/1167
                     lib = os.path.realpath(os.path.join(root, lib))
                     return ctypes.cdll.LoadLibrary(lib)
-    else:
-        raise OSError('no absolute path for "%s" and cannot load by name' % lib)
+    raise OSError('no absolute path for "%s" and cannot load by name' % lib)
 
 
 try:

@@ -41,10 +41,10 @@ class TLObject:
         Pretty formats the given object as a string which is returned.
         If indent is None, a single line will be returned.
         """
-        if indent is None:
-            if isinstance(obj, TLObject):
-                obj = obj.to_dict()
+        if isinstance(obj, TLObject):
+            obj = obj.to_dict()
 
+        if indent is None:
             if isinstance(obj, dict):
                 return "{}({})".format(
                     obj.get("_", "dict"),
@@ -54,54 +54,45 @@ class TLObject:
                         if k != "_"
                     ),
                 )
-            elif isinstance(obj, str) or isinstance(obj, bytes):
+            elif isinstance(obj, (str, bytes)) or not hasattr(obj, "__iter__"):
                 return repr(obj)
-            elif hasattr(obj, "__iter__"):
-                return "[{}]".format(", ".join(TLObject.pretty_format(x) for x in obj))
             else:
-                return repr(obj)
+                return "[{}]".format(", ".join(TLObject.pretty_format(x) for x in obj))
         else:
             result = []
-            if isinstance(obj, TLObject):
-                obj = obj.to_dict()
-
             if isinstance(obj, dict):
-                result.append(obj.get("_", "dict"))
-                result.append("(")
+                result.extend((obj.get("_", "dict"), "("))
                 if obj:
                     result.append("\n")
                     indent += 1
                     for k, v in obj.items():
                         if k == "_":
                             continue
-                        result.append("\t" * indent)
-                        result.append(k)
-                        result.append("=")
-                        result.append(TLObject.pretty_format(v, indent))
-                        result.append(",\n")
+                        result.extend(
+                            (
+                                "\t" * indent,
+                                k,
+                                "=",
+                                TLObject.pretty_format(v, indent),
+                                ",\n",
+                            )
+                        )
+
                     result.pop()  # last ',\n'
                     indent -= 1
-                    result.append("\n")
-                    result.append("\t" * indent)
+                    result.extend(("\n", "\t" * indent))
                 result.append(")")
 
-            elif isinstance(obj, str) or isinstance(obj, bytes):
+            elif isinstance(obj, (str, bytes)) or not hasattr(obj, "__iter__"):
                 result.append(repr(obj))
 
-            elif hasattr(obj, "__iter__"):
+            else:
                 result.append("[\n")
                 indent += 1
                 for x in obj:
-                    result.append("\t" * indent)
-                    result.append(TLObject.pretty_format(x, indent))
-                    result.append(",\n")
+                    result.extend(("\t" * indent, TLObject.pretty_format(x, indent), ",\n"))
                 indent -= 1
-                result.append("\t" * indent)
-                result.append("]")
-
-            else:
-                result.append(repr(obj))
-
+                result.extend(("\t" * indent, "]"))
             return "".join(result)
 
     @staticmethod
@@ -120,8 +111,6 @@ class TLObject:
                 padding = 4 - padding
 
             r.append(bytes([len(data)]))
-            r.append(data)
-
         else:
             padding = len(data) % 4
             if padding != 0:
@@ -137,9 +126,7 @@ class TLObject:
                     ]
                 )
             )
-            r.append(data)
-
-        r.append(bytes(padding))
+        r.extend((data, bytes(padding)))
         return b"".join(r)
 
     @staticmethod

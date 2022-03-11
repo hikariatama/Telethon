@@ -1195,17 +1195,16 @@ def resolve_bot_file_id(file_id):
             return None
 
         attributes = []
-        if file_type == 3 or file_type == 9:
+        if file_type in [3, 9]:
             attributes.append(
                 types.DocumentAttributeAudio(duration=0, voice=file_type == 3)
             )
-        elif file_type == 4 or file_type == 13:
+        elif file_type in [4, 13]:
             attributes.append(
                 types.DocumentAttributeVideo(
                     duration=0, w=0, h=0, round_message=file_type == 13
                 )
             )
-        # elif file_type == 5:  # other, cannot know which
         elif file_type == 8:
             attributes.append(
                 types.DocumentAttributeSticker(
@@ -1226,7 +1225,11 @@ def resolve_bot_file_id(file_id):
             attributes=attributes,
             file_reference=b"",
         )
-    elif (version == 2 and len(data) == 44) or (version == 4 and len(data) in (49, 77)):
+    elif (
+        (version == 2 and len(data) == 44)
+        or version == 4
+        and len(data) in {49, 77}
+    ):
         if version == 2:
             (
                 file_type,

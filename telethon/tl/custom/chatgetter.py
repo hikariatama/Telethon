@@ -130,11 +130,7 @@ class ChatGetter(abc.ABC):
             self._broadcast = bool(self.chat.broadcast)
 
         if isinstance(self._chat_peer, types.PeerChannel):
-            if self._broadcast is None:
-                return None
-            else:
-                return not self._broadcast
-
+            return None if self._broadcast is None else not self._broadcast
         return isinstance(self._chat_peer, types.PeerChat)
 
     @property

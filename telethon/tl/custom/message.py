@@ -474,8 +474,7 @@ class Message(ChatGetter, SenderGetter, TLObject):
         etc., without having to manually inspect the ``document.attributes``.
         """
         if not self._file:
-            media = self.photo or self.document
-            if media:
+            if media := self.photo or self.document:
                 self._file = File(media)
 
         return self._file
@@ -517,9 +516,10 @@ class Message(ChatGetter, SenderGetter, TLObject):
         """
         The :tl:`WebPage` media in this message, if any.
         """
-        if isinstance(self.media, types.MessageMediaWebPage):
-            if isinstance(self.media.webpage, types.WebPage):
-                return self.media.webpage
+        if isinstance(self.media, types.MessageMediaWebPage) and isinstance(
+            self.media.webpage, types.WebPage
+        ):
+            return self.media.webpage
 
     @property
     def audio(self):
@@ -999,14 +999,14 @@ class Message(ChatGetter, SenderGetter, TLObject):
                         return [answers[idx].option for idx in i]
                     return [answers[i].option]
                 if text is not None:
-                    if callable(text):
-                        for answer in answers:
-                            if text(answer.text):
-                                return [answer.option]
-                    else:
-                        for answer in answers:
-                            if answer.text == text:
-                                return [answer.option]
+                    for answer in answers:
+                        if (
+                            callable(text)
+                            and text(answer.text)
+                            or not callable(text)
+                            and answer.text == text
+                        ):
+                            return [answer.option]
                     return
 
                 if filter is not None:
@@ -1030,14 +1030,14 @@ class Message(ChatGetter, SenderGetter, TLObject):
         def find_button():
             nonlocal i
             if text is not None:
-                if callable(text):
-                    for button in self._buttons_flat:
-                        if text(button.text):
-                            return button
-                else:
-                    for button in self._buttons_flat:
-                        if button.text == text:
-                            return button
+                for button in self._buttons_flat:
+                    if (
+                        callable(text)
+                        and text(button.text)
+                        or not callable(text)
+                        and button.text == text
+                    ):
+                        return button
                 return
 
             if filter is not None:
@@ -1048,10 +1048,7 @@ class Message(ChatGetter, SenderGetter, TLObject):
 
             if i is None:
                 i = 0
-            if j is None:
-                return self._buttons_flat[i]
-            else:
-                return self._buttons[i][j]
+            return self._buttons_flat[i] if j is None else self._buttons[i][j]
 
         button = find_button()
         if button:
@@ -1180,8 +1177,7 @@ class Message(ChatGetter, SenderGetter, TLObject):
         Helper method to return the document only if it has an attribute
         that's an instance of the given kind, and passes the condition.
         """
-        doc = self.document
-        if doc:
+        if doc := self.document:
             for attr in doc.attributes:
                 if isinstance(attr, kind):
                     if not condition or condition(attr):

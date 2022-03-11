@@ -281,25 +281,26 @@ class DownloadMethods:
                     progress_callback=None,
                 )
 
-            for attr in ("username", "first_name", "title"):
-                possible_names.append(getattr(entity, attr, None))
+            possible_names.extend(
+                getattr(entity, attr, None)
+                for attr in ("username", "first_name", "title")
+            )
 
             photo = entity.photo
 
-        if isinstance(photo, (types.UserProfilePhoto, types.ChatPhoto)):
-            dc_id = photo.dc_id
-            loc = types.InputPeerPhotoFileLocation(
-                peer=await self.get_input_entity(entity),
-                photo_id=photo.photo_id,
-                big=download_big,
-            )
-        else:
+        if not isinstance(photo, (types.UserProfilePhoto, types.ChatPhoto)):
             # It doesn't make any sense to check if `photo` can be used
             # as input location, because then this method would be able
             # to "download the profile photo of a message", i.e. its
             # media which should be done with `download_media` instead.
             return None
 
+        dc_id = photo.dc_id
+        loc = types.InputPeerPhotoFileLocation(
+            peer=await self.get_input_entity(entity),
+            photo_id=photo.photo_id,
+            big=download_big,
+        )
         file = self._get_proper_filename(
             file, "profile_photo", ".jpg", possible_names=possible_names
         )
@@ -312,18 +313,17 @@ class DownloadMethods:
             # The fix seems to be using the full channel chat photo.
             ie = await self.get_input_entity(entity)
             ty = helpers._entity_type(ie)
-            if ty == helpers._EntityType.CHANNEL:
-                full = await self(functions.channels.GetFullChannelRequest(ie))
-                return await self._download_photo(
-                    full.full_chat.chat_photo,
-                    file,
-                    date=None,
-                    progress_callback=None,
-                    thumb=thumb,
-                )
-            else:
+            if ty != helpers._EntityType.CHANNEL:
                 # Until there's a report for chats, no need to.
                 return None
+            full = await self(functions.channels.GetFullChannelRequest(ie))
+            return await self._download_photo(
+                full.full_chat.chat_photo,
+                file,
+                date=None,
+                progress_callback=None,
+                thumb=thumb,
+            )
 
     async def download_media(
         self: "TelegramClient",
@@ -417,13 +417,15 @@ class DownloadMethods:
         if isinstance(media, str):
             media = utils.resolve_bot_file_id(media)
 
-        if isinstance(media, types.MessageService):
-            if isinstance(message.action, types.MessageActionChatEditPhoto):
-                media = media.photo
+        if isinstance(media, types.MessageService) and isinstance(
+            message.action, types.MessageActionChatEditPhoto
+        ):
+            media = media.photo
 
-        if isinstance(media, types.MessageMediaWebPage):
-            if isinstance(media.webpage, types.WebPage):
-                media = media.webpage.document or media.webpage.photo
+        if isinstance(media, types.MessageMediaWebPage) and isinstance(
+            media.webpage, types.WebPage
+        ):
+            media = media.webpage.document or media.webpage.photo
 
         if isinstance(media, (types.MessageMediaPhoto, types.Photo)):
             return await self._download_photo(
@@ -530,11 +532,7 @@ class DownloadMethods:
         msg_data: tuple = None
     ) -> typing.Optional[bytes]:
         if not part_size_kb:
-            if not file_size:
-                part_size_kb = 64  # Reasonable default
-            else:
-                part_size_kb = utils.get_appropriated_part_size(file_size)
-
+            part_size_kb = utils.get_appropriated_part_size(file_size) if file_size else 64
         part_size = int(part_size_kb * 1024)
         if part_size % MIN_CHUNK_SIZE != 0:
             raise ValueError("The part size must be evenly divisible by 4096.")

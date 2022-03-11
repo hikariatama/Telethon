@@ -81,11 +81,7 @@ class Conversation(ChatGetter):
         # The user is able to expect two responses for the same message.
         # {desired message ID: next incoming index}
         self._response_indices = {}
-        if replies_are_responses:
-            self._reply_indices = self._response_indices
-        else:
-            self._reply_indices = {}
-
+        self._reply_indices = self._response_indices if replies_are_responses else {}
         self._edit_dates = {}
 
     @_checks_cancelled
@@ -128,10 +124,7 @@ class Conversation(ChatGetter):
         <telethon.client.messages.MessageMethods.send_read_acknowledge>`.
         """
         if message is None:
-            if self._incoming:
-                message = self._incoming[-1].id
-            else:
-                message = 0
+            message = self._incoming[-1].id if self._incoming else 0
         elif not isinstance(message, int):
             message = message.id
 
@@ -211,12 +204,14 @@ class Conversation(ChatGetter):
         # If there is no last-chosen ID, make sure to pick one *after*
         # the input message, since we don't want responses back in time
         if target_id not in indices:
-            for i, incoming in enumerate(self._incoming):
-                if incoming.id > target_id:
-                    indices[target_id] = i
-                    break
-            else:
-                indices[target_id] = len(self._incoming)
+            indices[target_id] = next(
+                (
+                    i
+                    for i, incoming in enumerate(self._incoming)
+                    if incoming.id > target_id
+                ),
+                len(self._incoming),
+            )
 
         # We will always return a future from here, even if the result
         # can be set immediately. Otherwise, needing to await only
@@ -366,9 +361,7 @@ class Conversation(ChatGetter):
     async def _check_custom(self, built):
         for key, (ev, fut) in list(self._custom.items()):
             ev_type = type(ev)
-            inst = built[ev_type]
-
-            if inst:
+            if inst := built[ev_type]:
                 filter = ev.filter(inst)
                 if inspect.isawaitable(filter):
                     filter = await filter

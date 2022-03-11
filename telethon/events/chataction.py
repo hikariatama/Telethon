@@ -286,8 +286,7 @@ class ChatAction(EventBuilder):
             The user who added ``users``, if applicable (`None` otherwise).
             """
             if self._added_by and not isinstance(self._added_by, types.User):
-                aby = self._entities.get(utils.get_peer_id(self._added_by))
-                if aby:
+                if aby := self._entities.get(utils.get_peer_id(self._added_by)):
                     self._added_by = aby
 
             return self._added_by
@@ -307,8 +306,7 @@ class ChatAction(EventBuilder):
             The user who kicked ``users``, if applicable (`None` otherwise).
             """
             if self._kicked_by and not isinstance(self._kicked_by, types.User):
-                kby = self._entities.get(utils.get_peer_id(self._kicked_by))
-                if kby:
+                if kby := self._entities.get(utils.get_peer_id(self._kicked_by)):
                     self._kicked_by = kby
 
             return self._kicked_by
