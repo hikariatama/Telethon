@@ -1320,7 +1320,8 @@ class MessageMethods:
         message: "typing.Union[hints.MessageIDLike, typing.Sequence[hints.MessageIDLike]]" = None,
         *,
         max_id: int = None,
-        clear_mentions: bool = False
+        clear_mentions: bool = False,
+        clear_reactions: bool = False
     ) -> bool:
         """
         Marks messages as read and optionally clears mentions.
@@ -1380,6 +1381,9 @@ class MessageMethods:
             await self(functions.messages.ReadMentionsRequest(entity))
             if max_id is None:
                 return True
+
+        if clear_reactions:
+            await self(functions.messages.ReadReactionsRequest(entity))
 
         if max_id is not None:
             if helpers._entity_type(entity) == helpers._EntityType.CHANNEL:
