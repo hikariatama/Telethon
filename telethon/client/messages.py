@@ -1498,6 +1498,47 @@ class MessageMethods:
         # Pinning a message that doesn't exist would RPC-error earlier
         return self._get_response_message(request, result, entity)
 
+    async def send_reaction(
+        self: 'TelegramClient',
+        entity: 'hints.DialogLike',
+        message: 'hints.MessageIDLike',
+        reaction: typing.Optional[str] = None,
+        big: bool = False
+    ):
+        message = utils.get_message_id(message) or 0
+        if not reaction:
+            get_default_request = functions.help.GetAppConfigRequest()
+            app_config = await self(get_default_request)
+            reaction = (
+                next(
+                    (
+                        y for y in app_config.value
+                        if "reactions_default" in y.key
+                    )
+                )
+            ).value.value
+        request = functions.messages.SendReactionRequest(
+            big=big,
+            peer=entity,
+            msg_id=message,
+            reaction=reaction
+        )
+        result = await self(request)
+        for update in result.updates:
+            if isinstance(update, types.UpdateMessageReactions):
+                return update.reactions
+            if isinstance(update, types.UpdateEditMessage):
+                return update.message.reactions
+
+    async def set_quick_reaction(
+        self: 'TelegramClient',
+        reaction: str
+    ):
+        request = functions.messages.SetDefaultReactionRequest(
+            reaction=reaction
+        )
+        return await self(request)
+
     # endregion
 
     # endregion
