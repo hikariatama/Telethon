@@ -470,10 +470,10 @@ class UploadMethods:
             caption = (caption,)
 
         captions = []
-        captions.extend(
+        captions.extend([
             await self._parse_message_text(c or "", parse_mode)
             for c in reversed(caption)
-        )
+        ])
 
         reply_to = utils.get_message_id(reply_to)
 
