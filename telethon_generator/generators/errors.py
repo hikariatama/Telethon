@@ -1,15 +1,4 @@
 def generate_errors(errors, f):
-    f.write('_captures = {\n')
-    for error in errors:
-        if error.capture_name:
-            f.write(f"    {error.canonical_name!r}: {error.capture_name!r},\n")
-    f.write('}\n')
-
-    f.write('\n\n_descriptions = {\n')
-    for error in errors:
-        if error.description:
-            f.write(f"    {error.canonical_name!r}: {error.description!r},\n")
-    f.write('}\n')
     # Exact/regex match to create {CODE: ErrorClassName}
     exact_match = []
     regex_match = []
@@ -69,4 +58,3 @@ def generate_errors(errors, f):
     for error in regex_match:
         f.write('    ({}, {}),\n'.format(repr(error.pattern), error.name))
     f.write(')\n')
-

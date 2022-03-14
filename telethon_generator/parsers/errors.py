@@ -34,17 +34,8 @@ def _get_class_name(error_code):
         raise RuntimeError('error code starting with a digit cannot have valid Python name: {}'.format(error_code))
 
     return snake_to_camel_case(
-        error_code.replace('FIRSTNAME', 'FIRST_NAME') \
-                  .replace('SLOWMODE', 'SLOW_MODE').lower() \
-                  .replace('_0', '') \
-                  .replace('_X', ''), suffix='Error')
-
-
-def _get_canonical_name(error_code):
-    """
-    Gets the corresponding canonical name for the given error code.
-    """
-    return re.sub(r'[-_\d]', '', error_code).lower()
+        error_code.replace('FIRSTNAME', 'FIRST_NAME')\
+                  .replace('SLOWMODE', 'SLOW_MODE').lower(), suffix='Error')
 
 
 class Error:
@@ -52,12 +43,10 @@ class Error:
         # TODO Some errors have the same name but different integer codes
         # Should these be split into different files or doesn't really matter?
         # Telegram isn't exactly consistent with returned errors anyway.
-        self.subclass = _get_class_name(codes[0])
-        self.subclass_exists = abs(codes[0]) in KNOWN_BASE_CLASSES
-
         self.int_code = codes[0]
         self.str_code = name
-        self.canonical_name = _get_canonical_name(name)
+        self.subclass = _get_class_name(codes[0])
+        self.subclass_exists = abs(codes[0]) in KNOWN_BASE_CLASSES
         self.description = description
 
         self.has_captures = '_X' in name
