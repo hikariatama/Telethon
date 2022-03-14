@@ -247,7 +247,7 @@ PASSWORD_MISSING,400,The account must have 2-factor authentication enabled (a pa
 PASSWORD_RECOVERY_EXPIRED,400,
 PASSWORD_RECOVERY_NA,400,
 PASSWORD_REQUIRED,400,The account must have 2-factor authentication enabled (a password) before this method can be used
-PASSWORD_TOO_FRESH_X,400,The password was added too recently and {seconds} seconds must pass before using the method
+PASSWORD_TOO_FRESH_0,400,The password was added too recently and {seconds} seconds must pass before using the method
 PAYMENT_PROVIDER_INVALID,400,The payment provider was not recognised or its token was invalid
 PEER_FLOOD,400,Too many requests
 PEER_ID_INVALID,400,"An invalid Peer was used. Make sure to pass the right peer type and that the value is valid (for instance, bots cannot start conversations)"
@@ -339,7 +339,7 @@ SENSITIVE_CHANGE_FORBIDDEN,403,Your sensitive content settings cannot be changed
 SESSION_EXPIRED,401,The authorization has expired
 SESSION_PASSWORD_NEEDED,401,Two-steps verification is enabled and a password is required
 SESSION_REVOKED,401,"The authorization has been invalidated, because of the user terminating all sessions"
-SESSION_TOO_FRESH_X,400,The session logged in too recently and {seconds} seconds must pass before calling the method
+SESSION_TOO_FRESH_0,400,The session logged in too recently and {seconds} seconds must pass before calling the method
 SHA256_HASH_INVALID,400,The provided SHA256 hash is invalid
 SHORTNAME_OCCUPY_FAILED,400,An error occurred when trying to register the short-name used for the sticker pack. Try a different name
 SHORT_NAME_INVALID,400,
