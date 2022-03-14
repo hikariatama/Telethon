@@ -34,8 +34,10 @@ def _get_class_name(error_code):
         raise RuntimeError('error code starting with a digit cannot have valid Python name: {}'.format(error_code))
 
     return snake_to_camel_case(
-        error_code.replace('FIRSTNAME', 'FIRST_NAME')\
-                  .replace('SLOWMODE', 'SLOW_MODE').lower(), suffix='Error')
+        error_code.replace('FIRSTNAME', 'FIRST_NAME') \
+                  .replace('SLOWMODE', 'SLOW_MODE').lower() \
+                  .replace('_0', '') \
+                  .replace('_X', ''), suffix='Error')
 
 
 def _get_canonical_name(error_code):
