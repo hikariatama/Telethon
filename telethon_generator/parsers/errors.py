@@ -75,6 +75,8 @@ def parse_errors(csv_file):
                 raise ValueError('Columns count mismatch, unquoted comma in '
                                  'desc? (line {})'.format(line)) from None
 
+            name = name.replace('_0', '').replace('_X', '')
+
             try:
                 codes = [int(x) for x in codes.split()] or [400]
             except ValueError:
