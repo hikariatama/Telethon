@@ -23,6 +23,9 @@ def generate_errors(errors, f):
     for cls, int_code in sorted(create_base.items(), key=lambda t: t[1]):
         f.write('\n\nclass {}(RPCError):\n    code = {}\n'
                 .format(cls, int_code))
+        if '_X' in cls or '_0' in cls:
+            f.write('\n\nclass {}(RPCError):\n    code = {}\n'
+                    .format(cls.replace('_X', '').replace('_0', ''), int_code))
 
     # Error classes generation
     for error in errors:

@@ -49,10 +49,11 @@ class Error:
         self.subclass_exists = abs(codes[0]) in KNOWN_BASE_CLASSES
         self.description = description
 
-        self.has_captures = '_X' in name
+        self.has_captures = '_X' in name or '_0' in name
+
         if self.has_captures:
-            self.name = _get_class_name(name.replace('_X', '_'))
-            self.pattern = name.replace('_X', r'_(\d+)')
+            self.name = _get_class_name(name.replace('_X', '_').replace('_0', '_'))
+            self.pattern = name.replace('_X', r'_(\d+)').replace('_0', r'_(\d+)')
             self.capture_name = re.search(r'{(\w+)}', description).group(1)
         else:
             self.name = _get_class_name(name)
@@ -74,8 +75,6 @@ def parse_errors(csv_file):
             except ValueError:
                 raise ValueError('Columns count mismatch, unquoted comma in '
                                  'desc? (line {})'.format(line)) from None
-
-            name = name.replace('_0', '').replace('_X', '')
 
             try:
                 codes = [int(x) for x in codes.split()] or [400]
