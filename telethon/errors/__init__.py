@@ -5,14 +5,18 @@ Telegram API has. See telethon_generator/errors.json for more.
 import re
 
 from .common import (
-    ReadCancelledError, TypeNotFoundError, InvalidChecksumError,
-    InvalidBufferError, SecurityError, CdnFileTamperedError,
-    AlreadyInConversationError, BadMessageError, MultiError
+    ReadCancelledError, TypeNotFoundError, InvalidChecksumError,  # noqa: F401
+    InvalidBufferError, SecurityError, CdnFileTamperedError,  # noqa: F401
+    AlreadyInConversationError, BadMessageError, MultiError  # noqa: F401
 )
 
-# This imports the base errors too, as they're imported there
-from .rpcbaseerrors import *
-from .rpcerrorlist import *
+from .rpcbaseerrors import *  # noqa: F403
+from .rpcbaseerrors import _mk_error_type
+from .rpcerrorlist import *  # noqa: F403
+
+
+def __getattr__(name):
+    return _mk_error_type(name=name)
 
 
 def rpc_message_to_error(rpc_error, request):
@@ -25,11 +29,11 @@ def rpc_message_to_error(rpc_error, request):
     """
     # Try to get the error by direct look-up, otherwise regex
     # Case-insensitive, for things like "timeout" which don't conform.
-    cls = rpc_errors_dict.get(rpc_error.error_message.upper(), None)
+    cls = rpc_errors_dict.get(rpc_error.error_message.upper(), None)  # noqa: F405
     if cls:
         return cls(request=request)
 
-    for msg_regex, cls in rpc_errors_re:
+    for msg_regex, cls in rpc_errors_re:  # noqa: F405
         m = re.match(msg_regex, rpc_error.error_message)
         if m:
             capture = int(m.group(1)) if m.groups() else None
@@ -41,6 +45,6 @@ def rpc_message_to_error(rpc_error, request):
     #
     # We treat them as if they were positive, so -500 will be treated
     # as a `ServerError`, etc.
-    cls = base_errors.get(abs(rpc_error.error_code), RPCError)
+    cls = base_errors.get(abs(rpc_error.error_code), RPCError)  # noqa: F405
     return cls(request=request, message=rpc_error.error_message,
                code=rpc_error.error_code)
