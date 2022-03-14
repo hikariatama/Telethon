@@ -50,6 +50,9 @@ class Error:
         # TODO Some errors have the same name but different integer codes
         # Should these be split into different files or doesn't really matter?
         # Telegram isn't exactly consistent with returned errors anyway.
+        self.subclass = _get_class_name(codes[0])
+        self.subclass_exists = abs(codes[0]) in KNOWN_BASE_CLASSES
+
         self.int_code = codes[0]
         self.str_code = name
         self.canonical_name = _get_canonical_name(name)
