@@ -21,12 +21,7 @@ def _get_canonical_name(error_code):
     """
     Gets the corresponding canonical name for the given error code.
     """
-    # This code should match that of the library itself.
-    name = re.sub(r'[-_\d]', '', error_code).lower()
-    while name.endswith('error'):
-        name = name[:-len('error')]
-
-    return name
+    return re.sub(r'[-_\d]', '', error_code).lower()
 
 
 class Error:
