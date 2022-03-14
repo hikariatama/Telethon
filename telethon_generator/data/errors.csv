@@ -1,5 +1,5 @@
 name,codes,description
-2FA_CONFIRM_WAIT_X,420,The account is 2FA protected so it will be deleted in a week. Otherwise it can be reset in {seconds}
+2FA_CONFIRM_WAIT_0,420,The account is 2FA protected so it will be deleted in a week. Otherwise it can be reset in {seconds}
 ABOUT_TOO_LONG,400,The provided bio is too long
 ACCESS_TOKEN_EXPIRED,400,Bot token expired
 ACCESS_TOKEN_INVALID,400,The provided token is not valid
