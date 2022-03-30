@@ -379,7 +379,7 @@ class UploadMethods:
                 file = file[10:]
                 captions = captions[10:]
 
-            result.extend(await self.send_file(
+            result.extend([await self.send_file(
                         entity,
                         doc,
                         allow_cache=allow_cache,
@@ -398,7 +398,7 @@ class UploadMethods:
                         clear_draft=clear_draft,
                         background=background,
                         **kwargs
-                    ) for doc, cap in zip(file, captions))
+                    ) for doc, cap in zip(file, captions)])
             return result
 
         if formatting_entities is not None:
