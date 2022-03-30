@@ -469,11 +469,10 @@ class UploadMethods:
         if not utils.is_list_like(caption):
             caption = (caption,)
 
-        captions = []
-        captions.extend([
+        captions = [
             await self._parse_message_text(c or "", parse_mode)
             for c in reversed(caption)
-        ])
+        ]
 
         reply_to = utils.get_message_id(reply_to)
 
@@ -663,17 +662,17 @@ class UploadMethods:
 
                 if not isinstance(part, bytes):
                     raise TypeError(
-                        "file descriptor returned {}, not bytes (you must "
-                        "open the file in bytes mode)".format(type(part))
+                        f"file descriptor returned {type(part)}, not bytes (you must open the file in bytes mode)"
                     )
+
 
                 # `file_size` could be wrong in which case `part` may not be
                 # `part_size` before reaching the end.
                 if len(part) != part_size and part_index < part_count - 1:
                     raise ValueError(
-                        "read less than {} before reaching the end; either "
-                        "`file_size` or `read` are wrong".format(part_size)
+                        f"read less than {part_size} before reaching the end; either `file_size` or `read` are wrong"
                     )
+
 
                 pos += len(part)
 
@@ -700,9 +699,7 @@ class UploadMethods:
 
                 result = await self(request)
                 if not result:
-                    raise RuntimeError(
-                        "Failed to upload file part {}.".format(part_index)
-                    )
+                    raise RuntimeError(f"Failed to upload file part {part_index}.")
 
                 self._log[__name__].debug(
                     "Uploaded %d/%d", part_index + 1, part_count
@@ -799,9 +796,9 @@ class UploadMethods:
             pass  # Already have media, don't check the rest
         elif not file_handle:
             raise ValueError(
-                "Failed to convert {} to media. Not an existing file, "
-                "an HTTP URL or a valid bot-API-like file ID".format(file)
+                f"Failed to convert {file} to media. Not an existing file, an HTTP URL or a valid bot-API-like file ID"
             )
+
         elif as_image:
             media = types.InputMediaUploadedPhoto(file_handle, ttl_seconds=ttl)
         else:
