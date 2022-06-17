@@ -48,9 +48,9 @@ class TLObject:
             whitelist = WHITELISTED_MISMATCHING_IDS[0] |\
                 WHITELISTED_MISMATCHING_IDS.get(layer, set())
 
-            # if self.fullname not in whitelist:
-            #     assert self.id == self.infer_id(),\
-            #         'Invalid inferred ID for ' + repr(self)
+            if self.fullname not in whitelist:
+                assert self.id == self.infer_id(),\
+                    'Invalid inferred ID for ' + repr(self)
 
         self.class_name = snake_to_camel_case(
             self.name, suffix='Request' if self.is_function else '')
