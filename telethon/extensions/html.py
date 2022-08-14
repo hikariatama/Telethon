@@ -1,6 +1,7 @@
 """
 Simple HTML -> Telegram entity parser.
 """
+import logging
 import struct
 from collections import deque
 from html import escape
@@ -20,7 +21,9 @@ from ..tl.types import (
     MessageEntityUnderline,
     MessageEntityStrike,
     MessageEntityBlockquote,
+    MessageEntityCustomEmoji,
     TypeMessageEntity,
+    MessageEntitySpoiler,
 )
 
 
@@ -58,6 +61,8 @@ class HTMLToTelegramParser(HTMLParser):
             EntityType = MessageEntityBold
         elif tag in ["em", "i"]:
             EntityType = MessageEntityItalic
+        elif tag in ["tg-spoiler"]:
+            EntityType = MessageEntitySpoiler
         elif tag == "u":
             EntityType = MessageEntityUnderline
         elif tag in ["del", "s"]:
@@ -98,13 +103,16 @@ class HTMLToTelegramParser(HTMLParser):
                 url = None
             self._open_tags_meta.popleft()
             self._open_tags_meta.appendleft(url)
+        elif tag == "emoji":
+            EntityType = MessageEntityCustomEmoji
+            args["document_id"] = int(attrs["document_id"])
 
         if EntityType and tag not in self._building_entities:
             self._building_entities[tag] = EntityType(
                 offset=len(self.text),
                 # The length will be determined when closing the tag.
                 length=0,
-                **args
+                **args,
             )
 
     def handle_data(self, text):
@@ -203,6 +211,8 @@ def unparse(
             html.append("<strong>{}</strong>".format(entity_text))
         elif entity_type == MessageEntityItalic:
             html.append("<em>{}</em>".format(entity_text))
+        elif entity_type == MessageEntitySpoiler:
+            html.append("<tg-spoiler>{}</tg-spoiler>".format(entity_text))
         elif entity_type == MessageEntityCode:
             html.append("<code>{}</code>".format(entity_text))
         elif entity_type == MessageEntityUnderline:
@@ -231,6 +241,12 @@ def unparse(
         elif entity_type == MessageEntityMentionName:
             html.append(
                 '<a href="tg://user?id={}">{}</a>'.format(entity.user_id, entity_text)
+            )
+        elif entity_type == MessageEntityCustomEmoji:
+            html.append(
+                '<emoji document_id="{}">{}</emoji>'.format(
+                    entity.document_id, entity_text
+                )
             )
         else:
             skip_entity = True
