@@ -19,7 +19,6 @@ from ..tl.types import (
     MessageEntityUrl,
     MessageEntityTextUrl,
     MessageEntityMentionName,
-    MessageEntityMention,
     MessageEntityUnderline,
     MessageEntityStrike,
     MessageEntityBlockquote,
@@ -105,7 +104,7 @@ class HTMLToTelegramParser(HTMLParser):
                 url = None
             self._open_tags_meta.popleft()
             self._open_tags_meta.appendleft(url)
-        elif tag == "emoji":
+        elif tag == "emoji" and CUSTOM_EMOJIS:
             EntityType = MessageEntityCustomEmoji
             args["document_id"] = int(attrs["document_id"])
 
@@ -155,6 +154,8 @@ def parse(html: str) -> Tuple[str, List[TypeMessageEntity]]:
     return _del_surrogate(text), parser.entities
 
 
+CUSTOM_EMOJIS = False  # Must be enabled externally
+
 # Based on https://github.com/aiogram/aiogram/blob/c43ff9b6f9dd62cd2d84272e5c460b904b4c3276/aiogram/utils/text_decorations.py
 
 class TextDecoration(ABC):
@@ -189,7 +190,7 @@ class TextDecoration(ABC):
             return self.link(value=text, link=text)
         if type(entity) == MessageEntityEmail:
             return self.link(value=text, link=f"mailto:{text}")
-        if type(entity) == MessageEntityCustomEmoji:
+        if type(entity) == MessageEntityCustomEmoji and CUSTOM_EMOJIS:
             return self.custom_emoji(value=text, document_id=entity.document_id)
 
         return self.quote(text)
