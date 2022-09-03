@@ -1,6 +1,7 @@
 """
 Simple HTML -> Telegram entity parser.
 """
+import re
 import struct
 from collections import deque
 from html import escape
@@ -154,7 +155,7 @@ def parse(html: str) -> Tuple[str, List[TypeMessageEntity]]:
     return _del_surrogate(text), parser.entities
 
 
-CUSTOM_EMOJIS = False  # Must be enabled externally
+CUSTOM_EMOJIS = True  # Can be disabled externally
 
 # Based on https://github.com/aiogram/aiogram/blob/c43ff9b6f9dd62cd2d84272e5c460b904b4c3276/aiogram/utils/text_decorations.py
 
@@ -175,6 +176,9 @@ class TextDecoration(ABC):
             MessageEntityStrike: "strikethrough",
         }
         if type(entity) in entity_map:
+            if re.match(r"^<emoji document_id=\"?\d+?\"?>[^<]*?<\/emoji>$", text):
+                return text
+
             return cast(str, getattr(self, entity_map[type(entity)])(value=text))
         if type(entity) == MessageEntityPre:
             return (
@@ -330,7 +334,7 @@ class HtmlDecoration(TextDecoration):
         return escape(value, quote=False)
 
     def custom_emoji(self, value: str, document_id: str) -> str:
-        return f'<emoji document_id="{document_id}">{value}</emoji>'
+        return f'<emoji document_id={document_id}>{value}</emoji>'
 
 
 html_decoration = HtmlDecoration()

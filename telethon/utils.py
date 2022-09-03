@@ -17,6 +17,7 @@ import struct
 from collections import namedtuple
 from mimetypes import guess_extension
 from types import GeneratorType
+import typing
 
 from .extensions import markdown, html
 from .helpers import add_surrogate, del_surrogate
@@ -445,7 +446,7 @@ def get_input_media(
     voice_note=False,
     video_note=False,
     supports_streaming=False,
-    ttl=None
+    ttl=None,
 ):
     """
     Similar to :meth:`get_input_peer`, but for media.
@@ -665,7 +666,6 @@ def _get_metadata(file):
             )
         )
 
-
         return hachoir.metadata.extractMetadata(parser)
 
     except Exception as e:
@@ -688,7 +688,7 @@ def get_attributes(
     voice_note=False,
     video_note=False,
     supports_streaming=False,
-    thumb=None
+    thumb=None,
 ):
     """
     Get a list of attributes for the given file and
@@ -1225,11 +1225,7 @@ def resolve_bot_file_id(file_id):
             attributes=attributes,
             file_reference=b"",
         )
-    elif (
-        (version == 2 and len(data) == 44)
-        or version == 4
-        and len(data) in {49, 77}
-    ):
+    elif (version == 2 and len(data) == 44) or version == 4 and len(data) in {49, 77}:
         if version == 2:
             (
                 file_type,
@@ -1650,3 +1646,33 @@ def _photo_size_byte_count(size):
         return max(size.sizes)
     else:
         return None
+
+
+def convert_reaction(
+    reaction: "typing.Optional[hints.Reaction]" = None,  # type: ignore
+) -> typing.Optional[typing.Union[
+    typing.List[types.ReactionEmoji], typing.List[types.ReactionCustomEmoji]
+]]:
+    """
+    Converts a reaction to a list of :tl:`ReactionEmoji` or :tl:`ReactionCustomEmoji`.
+    """
+    if not reaction:
+        return None
+
+    if isinstance(reaction, str):
+        reaction = types.ReactionEmoji(reaction)
+
+    if isinstance(reaction, int):
+        reaction = types.ReactionCustomEmoji(reaction)
+
+    if isinstance(reaction, (types.ReactionEmoji, types.ReactionCustomEmoji)):
+        reaction = [reaction]
+
+    for r in reaction:
+        if isinstance(r, str):
+            reaction[reaction.index(r)] = types.ReactionEmoji(r)
+
+        if isinstance(r, int):
+            reaction[reaction.index(r)] = types.ReactionCustomEmoji(r)
+
+    return reaction
