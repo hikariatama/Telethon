@@ -638,4 +638,17 @@ class UserMethods:
 
         return types.InputNotifyPeer(await self.get_input_entity(notify))
 
+    async def set_status(
+        self: "TelegramClient",
+        document_id: int,
+        until: typing.Optional[int] = None,
+    ) -> bool:
+        return await self(
+            functions.account.UpdateEmojiStatusRequest(
+                types.EmojiStatusUntil(document_id, until)
+                if until
+                else types.EmojiStatus(document_id)
+            )
+        )
+
     # endregion

@@ -30,7 +30,7 @@ class AuthMethods:
         code_callback: typing.Callable[[], typing.Union[str, int]] = None,
         first_name: str = "New User",
         last_name: str = "",
-        max_attempts: int = 3
+        max_attempts: int = 3,
     ) -> "TelegramClient":
         """
         Starts the client (connects and logs in if necessary).
@@ -123,8 +123,7 @@ class AuthMethods:
 
         if phone and bot_token and not callable(phone):
             raise ValueError(
-                "Both a phone and a bot token provided, "
-                "must only provide one of either"
+                "Both a phone and a bot token provided, must only provide one of either"
             )
 
         coro = self._start(
@@ -293,12 +292,13 @@ class AuthMethods:
 
     async def sign_in(
         self: "TelegramClient",
-        phone: str = None,
-        code: typing.Union[str, int] = None,
+        phone: typing.Optional[str] = None,
+        code: typing.Optional[typing.Union[str, int]] = None,
         *,
-        password: str = None,
-        bot_token: str = None,
-        phone_code_hash: str = None
+        password: typing.Optional[str] = None,
+        bot_token: typing.Optional[str] = None,
+        phone_code_hash: typing.Optional[str] = None,
+        email_code: typing.Optional[str] = None,
     ) -> "typing.Union[types.User, types.auth.SentCode]":
         """
         Logs in to Telegram to an existing user or bot account.
@@ -336,6 +336,9 @@ class AuthMethods:
                 The hash returned by `send_code_request`. This can be left as
                 `None` to use the last hash known for the phone to be used.
 
+            email_code (`str`, optional):
+                The code sent to the email address of the user.
+
         Returns
             The signed in user, or the information about
             :meth:`send_code_request`.
@@ -353,14 +356,19 @@ class AuthMethods:
         if me:
             return me
 
-        if phone and not code and not password:
+        if phone and not code and not password and not email_code:
             return await self.send_code_request(phone)
         elif code:
             phone, phone_code_hash = self._parse_phone_and_hash(phone, phone_code_hash)
 
             # May raise PhoneCodeEmptyError, PhoneCodeExpiredError,
             # PhoneCodeHashEmptyError or PhoneCodeInvalidError.
-            request = functions.auth.SignInRequest(phone, phone_code_hash, str(code))
+            request = functions.auth.SignInRequest(
+                phone_number=phone,
+                phone_code_hash=phone_code_hash,
+                phone_code=str(code),
+                email_verification=types.EmailVerificationCode(email_code),
+            )
         elif password:
             pwd = await self(functions.account.GetPasswordRequest())
             request = functions.auth.CheckPasswordRequest(
@@ -394,7 +402,7 @@ class AuthMethods:
         last_name: str = "",
         *,
         phone: str = None,
-        phone_code_hash: str = None
+        phone_code_hash: str = None,
     ) -> "types.User":
         """
         Signs up to Telegram as a new user account.
@@ -495,8 +503,77 @@ class AuthMethods:
 
         return user
 
+    async def send_email_code(
+        self: "TelegramClient",
+        email: str,
+        purpose: str,
+    ) -> "types.account.SentEmailCode":
+        """
+        Sends an email with a code to be used with `sign_in` or `sign_up`.
+
+        Arguments
+            email (`str`):
+                The email to send the code to.
+
+            purpose (`str`):
+                The purpose of the code. This can be either ``"setup"``
+                or ``"login_change"`` or ``"passport"``.
+
+        Returns
+            The :tl:`SentEmailCode` object.
+        """
+        if purpose == "setup":
+            purpose = types.EmailVerifyPurposeLoginSetup()
+        elif purpose == "login_change":
+            purpose = types.EmailVerifyPurposeLoginChange()
+        elif purpose == "passport":
+            purpose = types.EmailVerifyPurposePassport()
+        else:
+            raise ValueError(
+                "`purpose` must be either 'setup', 'login_change' or 'passport'"
+            )
+
+        return await self(functions.account.SendVerifyEmailCodeRequest(purpose, email))
+
+    async def verify_email(
+        self: "TelegramClient",
+        purpose: str,
+        code: str,
+    ):
+        """
+        Verifies an email code sent with `send_email_code`.
+
+        Arguments
+            purpose (`str`):
+                The purpose of the code. This can be either ``"setup"``
+                or ``"login_change"`` or ``"passport"``.
+
+            code (`str`):
+                The code sent to the email.
+        """
+        if purpose == "setup":
+            purpose = types.EmailVerifyPurposeLoginSetup()
+        elif purpose == "login_change":
+            purpose = types.EmailVerifyPurposeLoginChange()
+        elif purpose == "passport":
+            purpose = types.EmailVerifyPurposePassport()
+        else:
+            raise ValueError(
+                "`purpose` must be either 'setup', 'login_change' or 'passport'"
+            )
+
+        return await self(
+            functions.account.VerifyEmailRequest(
+                purpose,
+                types.EmailVerificationCode(code),
+            )
+        )
+
     async def send_code_request(
-        self: "TelegramClient", phone: str, *, force_sms: bool = False
+        self: "TelegramClient",
+        phone: str,
+        *,
+        force_sms: bool = False,
     ) -> "types.auth.SentCode":
         """
         Sends the Telegram code needed to login to the given phone number.
@@ -624,7 +701,7 @@ class AuthMethods:
         *,
         hint: str = "",
         email: str = None,
-        email_code_callback: typing.Callable[[int], str] = None
+        email_code_callback: typing.Callable[[int], str] = None,
     ) -> bool:
         """
         Changes the 2FA settings of the logged in user.

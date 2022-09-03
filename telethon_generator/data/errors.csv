@@ -438,3 +438,5 @@ WORKER_BUSY_TOO_LONG_RETRY,500,Telegram workers are too busy to respond immediat
 YOU_BLOCKED_USER,400,You blocked this user
 PREMIUM_ACCOUNT_REQUIRED,403,Telegram Premium is required to use this feature
 MSG_VOICE_TOO_LONG,400,Voice message is too big to recognize
+VOICE_MESSAGES_FORBIDDEN,400,User have forbidden to receive voice messages
+MSG_VOICE_MISSING,400,There is no voice in message to transcribe

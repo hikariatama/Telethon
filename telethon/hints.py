@@ -17,6 +17,8 @@ EntityLike = typing.Union[
 ]
 EntitiesLike = typing.Union[EntityLike, typing.Sequence[EntityLike]]
 
+DialogLike = EntityLike
+
 ButtonLike = typing.Union[types.TypeKeyboardButton, custom.Button]
 MarkupLike = typing.Union[
     types.TypeReplyMarkup,
@@ -56,3 +58,16 @@ MessageLike = typing.Union[str, types.Message]
 MessageIDLike = typing.Union[int, types.Message, types.TypeInputMessage]
 
 ProgressCallback = typing.Callable[[int, int], None]
+
+Reaction = typing.Optional[
+    typing.Union[
+        str,
+        typing.List[str],
+        int,
+        typing.List[int],
+        types.ReactionEmoji,
+        typing.List[types.ReactionEmoji],
+        types.ReactionCustomEmoji,
+        typing.List[types.ReactionCustomEmoji],
+    ]
+]
