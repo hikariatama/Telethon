@@ -367,7 +367,9 @@ class AuthMethods:
                 phone_number=phone,
                 phone_code_hash=phone_code_hash,
                 phone_code=str(code),
-                email_verification=types.EmailVerificationCode(email_code),
+                email_verification=(
+                    types.EmailVerificationCode(email_code) if email_code else None
+                ),
             )
         elif password:
             pwd = await self(functions.account.GetPasswordRequest())
