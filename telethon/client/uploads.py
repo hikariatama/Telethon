@@ -39,7 +39,6 @@ class _CacheType:
 def _resize_photo_if_needed(
     file, is_image, width=1280, height=1280, background=(255, 255, 255)
 ):
-
     # https://github.com/telegramdesktop/tdesktop/blob/12905f0dcb9d513378e7db11989455a1b764ef75/Telegram/SourceFiles/boxes/photo_crop_box.cpp#L254
     if (
         not is_image
@@ -93,7 +92,6 @@ def _resize_photo_if_needed(
 
 
 class UploadMethods:
-
     # region Public methods
 
     async def send_file(
@@ -122,8 +120,9 @@ class UploadMethods:
         supports_streaming: bool = False,
         schedule: "hints.DateLike" = None,
         comment_to: "typing.Union[int, types.Message]" = None,
+        top_msg_id: int = None,
         ttl: int = None,
-        **kwargs
+        **kwargs,
     ) -> "types.Message":
         """
         Sends message with the given file to the specified entity.
@@ -281,6 +280,11 @@ class UploadMethods:
                 This parameter takes precedence over ``reply_to``. If there is
                 no linked chat, `telethon.errors.sgIdInvalidError` is raised.
 
+            top_msg_id (`int`, optional):
+                The top message ID of the discussion to which the message
+                will be sent. This is only used when sending a message to
+                a forum chat.
+
             ttl (`int`. optional):
                 The Time-To-Live of the file (also known as "self-destruct timer"
                 or "self-destructing media"). If set, files can only be viewed for
@@ -368,6 +372,7 @@ class UploadMethods:
                     caption=captions[:10],
                     progress_callback=progress_callback,
                     reply_to=reply_to,
+                    top_msg_id=top_msg_id,
                     parse_mode=parse_mode,
                     silent=silent,
                     schedule=schedule,
@@ -379,7 +384,9 @@ class UploadMethods:
                 file = file[10:]
                 captions = captions[10:]
 
-            result.extend([await self.send_file(
+            result.extend(
+                [
+                    await self.send_file(
                         entity,
                         doc,
                         allow_cache=allow_cache,
@@ -387,6 +394,7 @@ class UploadMethods:
                         force_document=force_document,
                         progress_callback=progress_callback,
                         reply_to=reply_to,
+                        top_msg_id=top_msg_id,
                         attributes=attributes,
                         thumb=thumb,
                         voice_note=voice_note,
@@ -397,8 +405,11 @@ class UploadMethods:
                         schedule=schedule,
                         clear_draft=clear_draft,
                         background=background,
-                        **kwargs
-                    ) for doc, cap in zip(file, captions)])
+                        **kwargs,
+                    )
+                    for doc, cap in zip(file, captions)
+                ]
+            )
             return result
 
         if formatting_entities is not None:
@@ -429,6 +440,7 @@ class UploadMethods:
             entity,
             media,
             reply_to_msg_id=reply_to,
+            top_msg_id=top_msg_id,
             message=caption,
             entities=msg_entities,
             reply_markup=markup,
@@ -453,6 +465,7 @@ class UploadMethods:
         clear_draft=None,
         force_document=False,
         background=None,
+        top_msg_id=None,
         ttl=None,
     ):
         """Specialized version of .send_file for albums"""
@@ -521,6 +534,7 @@ class UploadMethods:
             schedule_date=schedule,
             clear_draft=clear_draft,
             background=background,
+            top_msg_id=top_msg_id,
         )
         result = await self(request)
 
@@ -537,7 +551,7 @@ class UploadMethods:
         use_cache: type = None,
         key: bytes = None,
         iv: bytes = None,
-        progress_callback: "hints.ProgressCallback" = None
+        progress_callback: "hints.ProgressCallback" = None,
     ) -> "types.TypeInputFile":
         """
         Uploads a file to Telegram's servers, without sending it.
@@ -662,17 +676,17 @@ class UploadMethods:
 
                 if not isinstance(part, bytes):
                     raise TypeError(
-                        f"file descriptor returned {type(part)}, not bytes (you must open the file in bytes mode)"
+                        f"file descriptor returned {type(part)}, not bytes (you must"
+                        " open the file in bytes mode)"
                     )
-
 
                 # `file_size` could be wrong in which case `part` may not be
                 # `part_size` before reaching the end.
                 if len(part) != part_size and part_index < part_count - 1:
                     raise ValueError(
-                        f"read less than {part_size} before reaching the end; either `file_size` or `read` are wrong"
+                        f"read less than {part_size} before reaching the end; either"
+                        " `file_size` or `read` are wrong"
                     )
-
 
                 pos += len(part)
 
@@ -701,9 +715,7 @@ class UploadMethods:
                 if not result:
                     raise RuntimeError(f"Failed to upload file part {part_index}.")
 
-                self._log[__name__].debug(
-                    "Uploaded %d/%d", part_index + 1, part_count
-                )
+                self._log[__name__].debug("Uploaded %d/%d", part_index + 1, part_count)
                 if progress_callback:
                     await helpers._maybe_await(progress_callback(pos, file_size))
         if is_big:
@@ -796,7 +808,8 @@ class UploadMethods:
             pass  # Already have media, don't check the rest
         elif not file_handle:
             raise ValueError(
-                f"Failed to convert {file} to media. Not an existing file, an HTTP URL or a valid bot-API-like file ID"
+                f"Failed to convert {file} to media. Not an existing file, an HTTP URL"
+                " or a valid bot-API-like file ID"
             )
 
         elif as_image:

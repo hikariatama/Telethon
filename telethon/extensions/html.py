@@ -159,6 +159,7 @@ CUSTOM_EMOJIS = True  # Can be disabled externally
 
 # Based on https://github.com/aiogram/aiogram/blob/c43ff9b6f9dd62cd2d84272e5c460b904b4c3276/aiogram/utils/text_decorations.py
 
+
 class TextDecoration(ABC):
     def apply_entity(self, entity, text: str) -> str:
         """
@@ -313,7 +314,7 @@ class HtmlDecoration(TextDecoration):
         return f"<i>{value}</i>"
 
     def spoiler(self, value: str) -> str:
-        return f'<tg-spoiler>{value}</tg-spoiler>'
+        return f"<tg-spoiler>{value}</tg-spoiler>"
 
     def code(self, value: str) -> str:
         return f"<code>{value}</code>"
@@ -334,7 +335,7 @@ class HtmlDecoration(TextDecoration):
         return escape(value, quote=False)
 
     def custom_emoji(self, value: str, document_id: str) -> str:
-        return f'<emoji document_id={document_id}>{value}</emoji>'
+        return f"<emoji document_id={document_id}>{value}</emoji>"
 
 
 html_decoration = HtmlDecoration()

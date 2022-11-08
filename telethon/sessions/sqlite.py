@@ -45,7 +45,7 @@ class SQLiteSession(MemorySession):
         self._conn = None
         c = self._cursor()
         c.execute(
-            "select name from sqlite_master " "where type='table' and name='version'"
+            "select name from sqlite_master where type='table' and name='version'"
         )
         if c.fetchone():
             # Tables already exist, check for the version
@@ -212,7 +212,7 @@ class SQLiteSession(MemorySession):
 
     def get_update_state(self, entity_id):
         if row := self._execute(
-            "select pts, qts, date, seq from update_state " "where id = ?",
+            "select pts, qts, date, seq from update_state where id = ?",
             entity_id,
         ):
             pts, qts, date, seq = row

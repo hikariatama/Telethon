@@ -20,7 +20,6 @@ Callback = typing.Callable[[typing.Any], typing.Any]
 
 
 class UpdateMethods:
-
     # region Public methods
 
     async def _run_until_disconnected(self: "TelegramClient"):
@@ -399,9 +398,9 @@ class UpdateMethods:
     async def _dispatch_update(
         self: "TelegramClient", update, others, channel_id, pts_date
     ):
-        if not self._entity_cache.ensure_cached(
-            update
-        ) and self._state_cache.update(update, check_only=True):
+        if not self._entity_cache.ensure_cached(update) and self._state_cache.update(
+            update, check_only=True
+        ):
             # If the update doesn't have pts, fetching won't do anything.
             # For example, UpdateUserStatus or UpdateChatUserTyping.
             try:
@@ -472,7 +471,7 @@ class UpdateMethods:
             except events.StopPropagation:
                 name = getattr(callback, "__name__", repr(callback))
                 self._log[__name__].debug(
-                    'Event handler "%s" stopped chain of propagation ' "for event %s.",
+                    'Event handler "%s" stopped chain of propagation for event %s.',
                     name,
                     type(event).__name__,
                 )
@@ -516,7 +515,7 @@ class UpdateMethods:
             except events.StopPropagation:
                 name = getattr(callback, "__name__", repr(callback))
                 self._log[__name__].debug(
-                    'Event handler "%s" stopped chain of propagation ' "for event %s.",
+                    'Event handler "%s" stopped chain of propagation for event %s.',
                     name,
                     type(event).__name__,
                 )
@@ -536,7 +535,7 @@ class UpdateMethods:
         # Fetch since the last known pts/date before this update arrived,
         # in order to fetch this update at full, including its entities.
         self._log[__name__].debug(
-            "Getting difference for entities " "for %r", update.__class__
+            "Getting difference for entities for %r", update.__class__
         )
         if channel_id:
             # There are reports where we somehow call get channel difference
@@ -609,7 +608,7 @@ class UpdateMethods:
             await self.get_me()
         except Exception as e:
             self._log[__name__].warning(
-                "Error executing high-level request " "after reconnect: %s: %s",
+                "Error executing high-level request after reconnect: %s: %s",
                 type(e),
                 e,
             )

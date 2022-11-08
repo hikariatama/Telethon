@@ -186,3 +186,12 @@ class ParticipantPermissions:
     """,
         )
     )
+
+    manage_topics = property(
+        **_admin_prop(
+            "manage_topics",
+            """
+        Whether the user will be able to manage topics.
+    """,
+        )
+    )

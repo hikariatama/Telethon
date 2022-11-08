@@ -10,7 +10,6 @@ if typing.TYPE_CHECKING:
 
 
 class MessageParseMethods:
-
     # region Public properties
 
     @property

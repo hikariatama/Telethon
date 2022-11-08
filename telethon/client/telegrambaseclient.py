@@ -246,7 +246,7 @@ class TelegramBaseClient(abc.ABC):
         system_lang_code: str = "en",
         loop: asyncio.AbstractEventLoop = None,
         base_logger: typing.Union[str, logging.Logger] = None,
-        receive_updates: bool = True
+        receive_updates: bool = True,
     ):
         if not api_id or not api_hash:
             raise ValueError(
@@ -320,11 +320,10 @@ class TelegramBaseClient(abc.ABC):
         # See https://github.com/LonamiWebs/Telethon/issues/1337 for details.
         if not callable(getattr(self.loop, "sock_connect", None)):
             raise TypeError(
-                "Event loop of type {} lacks `sock_connect`, which is needed to use proxies.\n\n"
-                "Change the event loop in use to use proxies:\n"
-                "# https://github.com/LonamiWebs/Telethon/issues/1337\n"
-                "import asyncio\n"
-                "asyncio.set_event_loop(asyncio.SelectorEventLoop())".format(
+                "Event loop of type {} lacks `sock_connect`, which is needed to use"
+                " proxies.\n\nChange the event loop in use to use proxies:\n#"
+                " https://github.com/LonamiWebs/Telethon/issues/1337\nimport"
+                " asyncio\nasyncio.set_event_loop(asyncio.SelectorEventLoop())".format(
                     self.loop.__class__.__name__
                 )
             )
@@ -710,7 +709,8 @@ class TelegramBaseClient(abc.ABC):
             )
         except StopIteration:
             self._log[__name__].warning(
-                "Failed to get DC %s (cdn = %s) with use_ipv6 = %s; retrying ignoring IPv6 check",
+                "Failed to get DC %s (cdn = %s) with use_ipv6 = %s; retrying ignoring"
+                " IPv6 check",
                 dc_id,
                 cdn,
                 self._use_ipv6,

@@ -13,7 +13,6 @@ if typing.TYPE_CHECKING:
 
 
 class AuthMethods:
-
     # region Public methods
 
     def start(

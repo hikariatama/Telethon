@@ -206,7 +206,6 @@ class _GenericDownloadIter(_DirectDownloadIter):
 
 
 class DownloadMethods:
-
     # region Public methods
 
     async def download_profile_photo(
@@ -532,7 +531,9 @@ class DownloadMethods:
         msg_data: tuple = None
     ) -> typing.Optional[bytes]:
         if not part_size_kb:
-            part_size_kb = utils.get_appropriated_part_size(file_size) if file_size else 64
+            part_size_kb = (
+                utils.get_appropriated_part_size(file_size) if file_size else 64
+            )
         part_size = int(part_size_kb * 1024)
         if part_size % MIN_CHUNK_SIZE != 0:
             raise ValueError("The part size must be evenly divisible by 4096.")
@@ -728,7 +729,7 @@ class DownloadMethods:
         ):
             cls = _DirectDownloadIter
             self._log[__name__].info(
-                "Starting direct file download in chunks of " "%d at %d, stride %d",
+                "Starting direct file download in chunks of %d at %d, stride %d",
                 request_size,
                 offset,
                 stride,
@@ -736,7 +737,7 @@ class DownloadMethods:
         else:
             cls = _GenericDownloadIter
             self._log[__name__].info(
-                "Starting indirect file download in chunks of " "%d at %d, stride %d",
+                "Starting indirect file download in chunks of %d at %d, stride %d",
                 request_size,
                 offset,
                 stride,
@@ -946,16 +947,16 @@ class DownloadMethods:
         first_name = first_name.replace(";", "")
         last_name = (last_name or "").replace(";", "")
         result = (
-            (
-                "BEGIN:VCARD\n"
-                "VERSION:4.0\n"
-                "N:{f};{l};;;\n"
-                "FN:{f} {l}\n"
-                "TEL;TYPE=cell;VALUE=uri:tel:+{p}\n"
-                "END:VCARD\n"
+            "BEGIN:VCARD\n"
+            "VERSION:4.0\n"
+            "N:{f};{l};;;\n"
+            "FN:{f} {l}\n"
+            "TEL;TYPE=cell;VALUE=uri:tel:+{p}\n"
+            "END:VCARD\n".format(
+                f=first_name, l=last_name, p=phone_number
+            ).encode(
+                "utf-8"
             )
-            .format(f=first_name, l=last_name, p=phone_number)
-            .encode("utf-8")
         )
 
         if file is bytes:

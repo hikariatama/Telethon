@@ -155,14 +155,14 @@ async def _cancel(log, **tasks):
             # See https://github.com/python/cpython/blob/7df32f844efed33ca781a016017eab7050263b90/Lib/asyncio/futures.py#L328
             if e.args != ("yield from wasn't used with future",):
                 log.exception(
-                    "Unhandled exception from %s after cancelling " "%s (%s)",
+                    "Unhandled exception from %s after cancelling %s (%s)",
                     name,
                     type(task),
                     task,
                 )
         except Exception:
             log.exception(
-                "Unhandled exception from %s after cancelling " "%s (%s)",
+                "Unhandled exception from %s after cancelling %s (%s)",
                 name,
                 type(task),
                 task,

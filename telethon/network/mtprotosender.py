@@ -69,7 +69,7 @@ class MTProtoSender:
         connect_timeout=None,
         auth_key_callback=None,
         update_callback=None,
-        auto_reconnect_callback=None
+        auto_reconnect_callback=None,
     ):
         self._connection = None
         self._loggers = loggers
@@ -441,7 +441,7 @@ class MTProtoSender:
             except Exception as e:
                 last_error = e
                 self._log.exception(
-                    "Unexpected exception reconnecting on " "attempt %d", attempt
+                    "Unexpected exception reconnecting on attempt %d", attempt
                 )
 
                 await asyncio.sleep(self._delay)
@@ -576,7 +576,7 @@ class MTProtoSender:
                 # A step while decoding had the incorrect data. This message
                 # should not be considered safe and it should be ignored.
                 self._log.warning(
-                    "Security error while unpacking a " "received message: %s", e
+                    "Security error while unpacking a received message: %s", e
                 )
                 continue
             except BufferError as e:

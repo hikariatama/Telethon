@@ -9,6 +9,7 @@ from telethon.crypto import rsa
 @pytest.fixture
 def server_key_fp():
     """Factory to return a key, old if so chosen."""
+
     def _server_key_fp(old: bool):
         for fp, data in rsa._server_keys.items():
             _, old_key = data

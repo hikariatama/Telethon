@@ -1650,9 +1650,11 @@ def _photo_size_byte_count(size):
 
 def convert_reaction(
     reaction: "typing.Optional[hints.Reaction]" = None,  # type: ignore
-) -> typing.Optional[typing.Union[
-    typing.List[types.ReactionEmoji], typing.List[types.ReactionCustomEmoji]
-]]:
+) -> typing.Optional[
+    typing.Union[
+        typing.List[types.ReactionEmoji], typing.List[types.ReactionCustomEmoji]
+    ]
+]:
     """
     Converts a reaction to a list of :tl:`ReactionEmoji` or :tl:`ReactionCustomEmoji`.
     """

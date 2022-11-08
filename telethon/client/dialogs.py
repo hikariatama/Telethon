@@ -156,7 +156,6 @@ class _DraftsIter(RequestIter):
 
 
 class DialogMethods:
-
     # region Public methods
 
     def iter_dialogs(

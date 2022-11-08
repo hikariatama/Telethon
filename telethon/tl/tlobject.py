@@ -90,7 +90,9 @@ class TLObject:
                 result.append("[\n")
                 indent += 1
                 for x in obj:
-                    result.extend(("\t" * indent, TLObject.pretty_format(x, indent), ",\n"))
+                    result.extend(
+                        ("\t" * indent, TLObject.pretty_format(x, indent), ",\n")
+                    )
                 indent -= 1
                 result.extend(("\t" * indent, "]"))
             return "".join(result)

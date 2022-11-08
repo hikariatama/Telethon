@@ -335,7 +335,6 @@ class _IDsIter(RequestIter):
 
 
 class MessageMethods:
-
     # region Public methods
 
     # region Message retrieval
@@ -357,7 +356,7 @@ class MessageMethods:
         ids: "typing.Union[int, typing.Sequence[int]]" = None,
         reverse: bool = False,
         reply_to: int = None,
-        scheduled: bool = False
+        scheduled: bool = False,
     ) -> "typing.Union[_MessagesIter, _IDsIter]":
         """
         Iterator over the messages for the given chat.
@@ -624,6 +623,7 @@ class MessageMethods:
         entity: hints.EntityLike,
         message: hints.MessageLike = "",
         *,
+        top_msg_id: int = None,
         reply_to: "typing.Union[int, types.Message]" = None,
         attributes: "typing.Sequence[types.TypeDocumentAttribute]" = None,
         parse_mode: typing.Optional[str] = (),
@@ -640,7 +640,7 @@ class MessageMethods:
         background: bool = None,
         supports_streaming: bool = False,
         schedule: hints.DateLike = None,
-        comment_to: "typing.Union[int, types.Message]" = None
+        comment_to: "typing.Union[int, types.Message]" = None,
     ) -> "types.Message":
         """
         Sends a message to the specified user, chat or channel.
@@ -670,6 +670,11 @@ class MessageMethods:
                 characters. Longer messages will not be sliced automatically,
                 and you should slice them manually if the text to send is
                 longer than said length.
+
+            top_msg_id (`int`, optional):
+                The top message ID of the discussion to which the message
+                will be sent. This is only used when sending a message to
+                a forum chat.
 
             reply_to (`int` | `Message <telethon.tl.custom.message.Message>`, optional):
                 Whether to reply to a message or not. If an integer is provided,
@@ -818,6 +823,7 @@ class MessageMethods:
                 entity,
                 file,
                 caption=message,
+                top_msg_id=top_msg_id,
                 reply_to=reply_to,
                 attributes=attributes,
                 parse_mode=parse_mode,
@@ -852,6 +858,7 @@ class MessageMethods:
                 return await self.send_file(
                     entity,
                     message.media,
+                    top_msg_id=top_msg_id,
                     caption=message.message,
                     silent=silent,
                     background=background,
@@ -867,6 +874,7 @@ class MessageMethods:
                 silent=silent,
                 background=background,
                 reply_to_msg_id=utils.get_message_id(reply_to),
+                top_msg_id=top_msg_id,
                 reply_markup=markup,
                 entities=message.entities,
                 clear_draft=clear_draft,
@@ -890,6 +898,7 @@ class MessageMethods:
                 entities=formatting_entities,
                 no_webpage=not link_preview,
                 reply_to_msg_id=utils.get_message_id(reply_to),
+                top_msg_id=top_msg_id,
                 clear_draft=clear_draft,
                 silent=silent,
                 background=background,
@@ -925,7 +934,8 @@ class MessageMethods:
         with_my_score: bool = None,
         silent: bool = None,
         as_album: bool = None,
-        schedule: hints.DateLike = None
+        schedule: hints.DateLike = None,
+        top_msg_id: int = None,
     ) -> "typing.Sequence[types.Message]":
         """
         Forwards the given messages to the specified entity.
@@ -968,6 +978,11 @@ class MessageMethods:
                 If set, the message(s) won't forward immediately, and
                 instead they will be scheduled to be automatically sent
                 at a later time.
+
+            top_msg_id (`int`, optional):
+                The top message ID of the thread to which the message(s)
+                will be forwarded. Only applicable when forwarding to a
+                forum chat.
 
         Returns
             The list of forwarded `Message <telethon.tl.custom.message.Message>`,
@@ -1040,6 +1055,7 @@ class MessageMethods:
                 background=background,
                 with_my_score=with_my_score,
                 schedule_date=schedule,
+                top_msg_id=top_msg_id,
             )
             result = await self(req)
             sent.extend(self._get_response_message(req, result, entity))
@@ -1063,7 +1079,7 @@ class MessageMethods:
         force_document: bool = False,
         buttons: hints.MarkupLike = None,
         supports_streaming: bool = False,
-        schedule: hints.DateLike = None
+        schedule: hints.DateLike = None,
     ) -> "types.Message":
         """
         Edits the given message to change its text or media.
@@ -1231,7 +1247,7 @@ class MessageMethods:
         entity: hints.EntityLike,
         message_ids: "typing.Union[hints.MessageIDLike, typing.Sequence[hints.MessageIDLike]]",
         *,
-        revoke: bool = True
+        revoke: bool = True,
     ) -> "typing.Sequence[types.messages.AffectedMessages]":
         """
         Deletes the given messages, optionally "for everyone".
@@ -1320,7 +1336,8 @@ class MessageMethods:
         *,
         max_id: int = None,
         clear_mentions: bool = False,
-        clear_reactions: bool = False
+        clear_reactions: bool = False,
+        top_msg_id: int = None,
     ) -> bool:
         """
         Marks messages as read and optionally clears mentions.
@@ -1355,6 +1372,18 @@ class MessageMethods:
                 If no message is provided, this will be the only action
                 taken.
 
+            clear_reactions (`bool`):
+                Whether the reactions badge should be cleared (so that
+                there are no more reactions) or not for the given entity.
+
+                If no message is provided, this will be the only action
+                taken.
+
+            top_msg_id (`int`, optional):
+                The top message ID of the discussion in which the mentions
+                are being cleared. This is required for topics of forum
+                chats.
+
         Example
             .. code-block:: python
 
@@ -1377,18 +1406,19 @@ class MessageMethods:
                 max_id = 0
         entity = await self.get_input_entity(entity)
         if clear_mentions:
-            await self(functions.messages.ReadMentionsRequest(entity))
+            await self(functions.messages.ReadMentionsRequest(entity, top_msg_id))
             if max_id is None:
                 return True
 
         if clear_reactions:
-            await self(functions.messages.ReadReactionsRequest(entity))
+            await self(functions.messages.ReadReactionsRequest(entity, top_msg_id))
 
         if max_id is not None:
             if helpers._entity_type(entity) == helpers._EntityType.CHANNEL:
                 return await self(
                     functions.channels.ReadHistoryRequest(
-                        utils.get_input_channel(entity), max_id=max_id
+                        utils.get_input_channel(entity),
+                        max_id=max_id,
                     )
                 )
             else:
@@ -1404,7 +1434,7 @@ class MessageMethods:
         message: "typing.Optional[hints.MessageIDLike]",
         *,
         notify: bool = False,
-        pm_oneside: bool = False
+        pm_oneside: bool = False,
     ):
         """
         Pins a message in a chat.
@@ -1450,7 +1480,7 @@ class MessageMethods:
         entity: hints.EntityLike,
         message: "typing.Optional[hints.MessageIDLike]" = None,
         *,
-        notify: bool = False
+        notify: bool = False,
     ):
         """
         Unpins a message in a chat.

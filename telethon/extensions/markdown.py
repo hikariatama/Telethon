@@ -83,7 +83,6 @@ def parse(message, delimiters=None, url_re=None):
 
             # Did we find the earliest closing tag?
             if end != -1:
-
                 # Remove the delimiter from the string
                 message = "".join(
                     (

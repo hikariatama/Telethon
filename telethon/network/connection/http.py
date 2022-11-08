@@ -19,7 +19,9 @@ class HttpPacketCodec(PacketCodec):
             "Keep-Alive: timeout=100000, max=10000000\r\n"
             "Content-Length: {}\r\n\r\n".format(
                 self._conn._ip, self._conn._port, len(data)
-            ).encode("ascii")
+            ).encode(
+                "ascii"
+            )
             + data
         )
 

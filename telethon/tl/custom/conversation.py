@@ -49,7 +49,7 @@ class Conversation(ChatGetter):
         total_timeout,
         max_messages,
         exclusive,
-        replies_are_responses
+        replies_are_responses,
     ):
         # This call resets the client
         ChatGetter.__init__(self, input_chat=input_chat)
